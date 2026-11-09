@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-auditor"
+version = "0.12.1"
+license = { text = "MIT" }
+readme = "README.md"
+description = "Open-source reliability layer for AI agents: traces, evals, drift, failure-to-test, root cause, canaries, rollback."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.29",
+  "sqlalchemy>=2.0",
+  "pydantic>=2.6",
+  "httpx>=0.27",
+  "alembic>=1.13",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+postgres = ["psycopg[binary]>=3.1"]
+langgraph = ["langgraph>=0.2", "langchain-core>=0.3"]
+
+[project.scripts]
+agent-auditor-worker = "agent_auditor.worker:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+agent_auditor = ["dashboard/*.html", "dashboard/*.js", "dashboard/js/*.js", "dashboard/*.css", "data/*.json", "data/*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff.lint]
+select = ["F", "E9"]

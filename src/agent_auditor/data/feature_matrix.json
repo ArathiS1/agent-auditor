@@ -1,0 +1,45 @@
+{
+  "as_of": "2026-06",
+  "note": "A hand-kept checklist of what each assistant publicly offers, from their own product pages and the comparison articles linked below. Products change often: treat 'yes' and 'no' as a starting point and confirm in the product before you build. 'unknown' means it was not confirmed.",
+  "sources": [
+    {"title": "ChatGPT features 2026 (Suprmind)", "url": "https://suprmind.ai/hub/chatgpt/features/"},
+    {"title": "ChatGPT vs Claude vs Perplexity vs Gemini, April 2026 (AIMagicx)", "url": "https://www.aimagicx.com/blog/chatgpt-vs-claude-vs-perplexity-vs-gemini-april-2026"},
+    {"title": "Best AI chatbots 2026 (Veza Digital)", "url": "https://www.vezadigital.com/post/best-ai-chatbots"},
+    {"title": "The Complete Guide to Choosing AI Platforms in 2026 (First AI Movers)", "url": "https://www.firstaimovers.com/p/complete-eight-ai-platform-comparison-guide-2025"}
+  ],
+  "products": ["ChatGPT", "Claude", "Gemini", "Perplexity", "Copilot", "Blackbox"],
+  "ours_fallback": [],
+  "features": [
+    {"id": "streaming", "group": "Chatting", "name": "Streams the answer as it is written", "values": ["yes","yes","yes","yes","yes","yes"], "impact": 3, "effort": "S", "how": "Stream tokens to the page as they arrive."},
+    {"id": "markdown", "group": "Chatting", "name": "Formats answers (headings, tables, code blocks)", "values": ["yes","yes","yes","yes","yes","yes"], "impact": 3, "effort": "S", "how": "Render Markdown safely, with a copy button on code blocks."},
+    {"id": "copy", "group": "Chatting", "name": "Copy an answer or a code block in one click", "values": ["yes","yes","yes","yes","yes","yes"], "impact": 2, "effort": "S", "how": "Add a copy button to each answer and each code block."},
+    {"id": "stop", "group": "Chatting", "name": "Stop an answer part-way", "values": ["yes","yes","yes","yes","yes","yes"], "impact": 2, "effort": "S", "how": "Send a cancel signal to the running turn."},
+    {"id": "regenerate", "group": "Chatting", "name": "Regenerate an answer", "values": ["yes","yes","yes","yes","yes","yes"], "impact": 2, "effort": "S", "how": "Drop the last answer and ask again."},
+    {"id": "edit_message", "group": "Chatting", "name": "Edit an earlier message and continue from there", "values": ["yes","yes","yes","partial","yes","unknown"], "impact": 2, "effort": "M", "how": "Rewind the conversation to that message and resend."},
+    {"id": "feedback", "group": "Chatting", "name": "Thumbs up / down on an answer", "values": ["yes","yes","yes","yes","yes","unknown"], "impact": 2, "effort": "S", "how": "Send the rating to the Auditor, which turns thumbs-down into a diagnosed failure."},
+    {"id": "followups", "group": "Chatting", "name": "Suggested follow-up questions", "values": ["partial","no","yes","yes","yes","unknown"], "impact": 1, "effort": "S", "how": "Ask the model for three short follow-ups after each answer."},
+    {"id": "search_chats", "group": "Chatting", "name": "Search past conversations", "values": ["yes","yes","yes","yes","partial","unknown"], "impact": 2, "effort": "S", "how": "Full-text search over stored messages."},
+    {"id": "export", "group": "Chatting", "name": "Export or share a conversation", "values": ["partial","partial","yes","yes","yes","unknown"], "impact": 1, "effort": "S", "how": "Download a conversation as Markdown."},
+    {"id": "voice_in", "group": "Input", "name": "Dictate a message by voice", "values": ["yes","yes","yes","yes","yes","unknown"], "impact": 1, "effort": "S", "how": "Use the browser's speech recognition where it exists."},
+    {"id": "files", "group": "Input", "name": "Attach documents (PDF, Word, text)", "values": ["yes","yes","yes","yes","yes","yes"], "impact": 3, "effort": "M", "how": "Extract text on the server and let the model search it."},
+    {"id": "images", "group": "Input", "name": "Understand images", "values": ["yes","yes","yes","yes","yes","yes"], "impact": 3, "effort": "M", "how": "Send images to a vision-capable model."},
+    {"id": "web_search", "group": "Knowledge", "name": "Web search with linked sources", "values": ["yes","yes","yes","yes","yes","yes"], "impact": 3, "effort": "M", "how": "Search tool plus a page-reading tool; cite as links."},
+    {"id": "deep_research", "group": "Knowledge", "name": "Deep research mode (multi-step, cited report)", "values": ["yes","yes","yes","yes","yes","unknown"], "impact": 3, "effort": "M", "how": "A longer tool loop that plans sub-questions and writes a sourced report."},
+    {"id": "memory", "group": "Knowledge", "name": "Remembers facts about you across chats", "values": ["yes","yes","yes","yes","yes","unknown"], "impact": 2, "effort": "M", "how": "A small notes store the model can read and write, with a page to review it."},
+    {"id": "projects", "group": "Knowledge", "name": "Projects / workspaces with their own files and instructions", "values": ["yes","yes","partial","partial","partial","unknown"], "impact": 2, "effort": "L", "how": "Group chats under a project that carries shared files and a custom instruction."},
+    {"id": "code_exec", "group": "Doing", "name": "Runs code or analyses data", "values": ["yes","yes","yes","partial","partial","yes"], "impact": 2, "effort": "L", "how": "Needs a sandbox for running code safely. Do not run model code on the host."},
+    {"id": "artifacts", "group": "Doing", "name": "Side panel for documents and live previews", "values": ["yes","yes","yes","no","partial","partial"], "impact": 2, "effort": "L", "how": "Render HTML in a sandboxed frame next to the chat."},
+    {"id": "connectors", "group": "Doing", "name": "Connects to your apps (mail, calendar, drive)", "values": ["yes","yes","partial","partial","yes","partial"], "impact": 2, "effort": "L", "how": "Support MCP servers as extra tools."},
+    {"id": "image_gen", "group": "Doing", "name": "Generates images", "values": ["yes","no","yes","yes","yes","yes"], "impact": 1, "effort": "L", "how": "Call an image model. Not core to an auditing assistant."},
+    {"id": "model_switch", "group": "Control", "name": "Switch model from the chat window", "values": ["yes","yes","yes","yes","partial","yes"], "impact": 3, "effort": "M", "how": "List the models whose keys are present and let the person pick."},
+    {"id": "dark_mode", "group": "Control", "name": "Light and dark themes", "values": ["yes","yes","yes","yes","yes","yes"], "impact": 1, "effort": "S", "how": "Follow the system setting, with a toggle."},
+    {"id": "shows_reasoning", "group": "Control", "name": "Shows the steps it took (searches, tool calls)", "values": ["partial","yes","yes","partial","partial","unknown"], "impact": 2, "effort": "S", "how": "Show each tool call as a chip with its result."}
+  ],
+  "unique": [
+    {"id": "trace_every_answer", "name": "Every answer is recorded as a trace you can open", "detail": "Consumer assistants do not let you inspect the steps behind an answer."},
+    {"id": "failure_cause", "name": "Each failure is given a likely cause and a fix to try", "detail": "A thumbs-down becomes a diagnosed failure, not just a number."},
+    {"id": "regression_tests", "name": "A real failure becomes a regression test", "detail": "Replay it against a new version before it ships."},
+    {"id": "release_gate", "name": "Changes go out through a canary and a human-approved gate, with rollback", "detail": "Switching models is a reviewed release, not a silent change."},
+    {"id": "model_benchmark", "name": "The same questions asked of several models, with pass rates and intervals", "detail": "Shows when another model would answer your questions better."}
+  ]
+}

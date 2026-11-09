@@ -1,0 +1,169 @@
+question,expected,in_scope
+Should I fine-tune or use RAG to add new facts?,RAG,yes
+how does langgrpah model an agent,graph,yes
+what is cosnie similarity used for,cosine,yes
+Why pin dependency versions?,pin,yes
+What maximum number of steps should an agent run have?,8,yes
+what is pormpt injection,untrusted,yes
+How many roles should I apply to per day?,5 roles,yes
+what are positional encodnigs for,order,yes
+how many examples do i need for an intsruction fine-tune,500,yes
+What is the capital of Australia?,,no
+What is the difference between FAISS and Chroma?,FAISS,yes
+what shuold i do with a key that was committed to git,rotate,yes
+What chunk size should I start with for my notes?,300,yes
+how many roles shuold i apply to per day,5 roles,yes
+Give me a recipe for pancakes.,,no
+What is ruff?,ruff,yes
+Who is the president of France?,,no
+Which library should I use for HTTP calls?,httpx,yes
+What does a reranker do?,cross-encoder,yes
+How long should a system prompt be?,500,yes
+how should i practise explianing system design,failure modes,yes
+When should I ask for JSON output?,JSON,yes
+Which two stories should I prepare for interviews?,failure,yes
+What file names does pytest look for?,test_,yes
+How many calories are in a banana?,,no
+What is a canary release?,10 percent,yes
+At what level should I alert on API spending?,80 percent,yes
+What should a portfolio project include?,write-up,yes
+what does git rveert do,revert,yes
+Who invented the telephone?,,no
+how sholud i order a prompt with retrieved context,labels,yes
+how do i rdeuce hallucinations in rag bot,do not know,yes
+how many dimensions does text-embedding-3-small prdouce,1536,yes
+sohuld i fine-tune or use rag to add new facts,RAG,yes
+How should I retry rate-limit errors?,backoff,yes
+What is cosine similarity used for?,cosine,yes
+What does docker compose do?,compose,yes
+what should i comprae fine-tuned model against,base model,yes
+where sohuld api keys be stored,environment variables,yes
+what is ruff,ruff,yes
+how do decoder-only models geenrate text,one token,yes
+Who won the last cricket world cup?,,no
+What must I do when I change the embedding model?,re-embed,yes
+How should I order a prompt with retrieved context?,labels,yes
+What is an agent loop?,tool,yes
+How does LangGraph model an agent?,graph,yes
+How many characters is one token?,4 characters,yes
+which lirbary should i use for http calls,httpx,yes
+what is lora,adapter,yes
+Recommend a good movie for tonight.,,no
+What is hybrid search?,BM25,yes
+what rollabck plan should i keep,one click,yes
+What is quantization?,quantization,yes
+why add health check endponit,/healthz,yes
+Translate good morning into Spanish.,,no
+what default timoeut do i use for tool calls,10 seconds,yes
+what is chain-of-thought promtping,step by step,yes
+What permissions should tools get?,least,yes
+what does kv cache store,KV cache,yes
+how many judge scores shuold i check by hand,20,yes
+What is the price of Bitcoin today?,,no
+What validates data coming from APIs?,pydantic,yes
+What does recall at k measure?,recall,yes
+What default timeout do I use for tool calls?,10 seconds,yes
+What should I compare a fine-tuned model against?,base model,yes
+Where should API keys be stored?,environment variables,yes
+How long should I cache identical questions?,24 hours,yes
+why do tool desrciptions matter,vague,yes
+How should I practise explaining a system design?,failure modes,yes
+Tell me a joke.,,no
+when sholud i rerun golden set,prompt,yes
+How do I train for a marathon?,,no
+What is the meaning of life?,,no
+What is chain-of-thought prompting?,step by step,yes
+How do decoder-only models generate text?,one token,yes
+What should I do with a key that was committed to git?,rotate,yes
+Write a poem about the sea.,,no
+What does faithfulness check?,faithfulness,yes
+How many few-shot examples do I need?,3,yes
+What is LoRA?,adapter,yes
+How big should a golden set be?,golden,yes
+what is an agent loop,tool,yes
+what does faithfulenss check,faithfulness,yes
+what validtaes data coming from apis,pydantic,yes
+how should i retry rate-limit errors,backoff,yes
+What is the population of India?,,no
+What belongs in a .gitignore?,.gitignore,yes
+What should I remove from logs before storing them?,personal data,yes
+what does self-attention do,attention,yes
+what maixmum number of steps should an agent run have,8,yes
+how many few-shot eaxmples do i need,3,yes
+How many judge scores should I check by hand?,20,yes
+what bleongs in a gitignore,.gitignore,yes
+Why do tool descriptions matter?,vague,yes
+What should a commit message say?,why,yes
+when sohuld i ask for json output,JSON,yes
+What goes at the top of a project README?,README,yes
+How do I cook biryani?,,no
+What is the latest iPhone model?,,no
+what does reclal at k measure,recall,yes
+what should comimt message say,why,yes
+What is a context window?,context window,yes
+what permissions sohuld tools get,least,yes
+What temperature should I use for question answering?,temperature 0,yes
+how long should sysetm prompt be,500,yes
+what chunk size sholud i start with for my notes,300,yes
+Which latency number should I track besides the average?,p95,yes
+What should I log with every run?,prompt version,yes
+what sohuld weekly study log contain,study log,yes
+How much data should I hold out for validation?,15 percent,yes
+What should my weekly study log contain?,study log,yes
+what sholud i log with every run,prompt version,yes
+How many dimensions does text-embedding-3-small produce?,1536,yes
+how many cahracters is one token,4 characters,yes
+What is prompt injection?,untrusted,yes
+How many chunks should I retrieve by default?,4,yes
+how long shuold i cache identical questions,24 hours,yes
+How tall is Mount Everest?,,no
+How many examples do I need for an instruction fine-tune?,500,yes
+what temperature should i use for question asnwering,temperature 0,yes
+What should an audit log record?,audit,yes
+what should i remove from logs befroe storing them,personal data,yes
+How do I create a virtual environment?,venv,yes
+What rollback plan should I keep?,one click,yes
+Why use metadata filters in retrieval?,stale,yes
+at what level shuold i alert on api spending,80 percent,yes
+when is asynico useful,asyncio,yes
+Why add a health check endpoint?,/healthz,yes
+What does git revert do?,revert,yes
+why pin dependency verisons,pin,yes
+what file names does pytset look for,test_,yes
+What does self-attention do?,attention,yes
+What is the weather in Bangalore today?,,no
+what is a canary reelase,10 percent,yes
+how big sholud golden set be,golden,yes
+what must i do when i chnage embedding model,re-embed,yes
+Why should I normalize vectors?,length 1,yes
+What is the best phone under 20000 rupees?,,no
+what should i do befroe sending user files to an outside api,ask,yes
+What should I do before sending user files to an outside API?,ask,yes
+how do i create a virtual envrionment,venv,yes
+how many chunks should i retrieve by defalut,4,yes
+which two stories sholud i prepare for interviews,failure,yes
+what does a reranekr do,cross-encoder,yes
+When is asyncio useful?,asyncio,yes
+How do I fix a leaking tap?,,no
+what should a portfoilo project include,write-up,yes
+why sohuld i normalize vectors,length 1,yes
+What are positional encodings for?,order,yes
+what is a cotnext window,context window,yes
+which latnecy number should i track besides average,p95,yes
+why use mteadata filters in retrieval,stale,yes
+What does the KV cache store?,KV cache,yes
+what should an audit log reocrd,audit,yes
+what does docker copmose do,compose,yes
+What is the stock price of Tesla?,,no
+What is HNSW?,HNSW,yes
+When should I rerun the golden set?,prompt,yes
+what is quantiaztion,quantization,yes
+Is it going to rain tomorrow?,,no
+what is difference between faiss and crhoma,FAISS,yes
+what goes at top of prjoect readme,README,yes
+what is hnsw,HNSW,yes
+How do I get a visa for Canada?,,no
+What time is it in Tokyo?,,no
+what is hbyrid search,BM25,yes
+How do I reduce hallucinations in a RAG bot?,do not know,yes
+how much data sohuld i hold out for validation,15 percent,yes
