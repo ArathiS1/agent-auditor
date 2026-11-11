@@ -50,7 +50,7 @@ def create_app(database_url: str | None = None, api_key: str | None = None,
     if settings.auto_create_tables:  # with Alembic (Docker Compose) set AUDITOR_AUTO_CREATE_TABLES=false
         Base.metadata.create_all(engine)
 
-    app = FastAPI(title="Agent Auditor", version="0.13.0")
+    app = FastAPI(title="Agent Auditor", version="0.14.0")
     app.state.settings = settings
     app.state.engine = engine
     app.state.session_factory = make_session_factory(engine)
