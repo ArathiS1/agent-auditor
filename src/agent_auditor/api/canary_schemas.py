@@ -33,6 +33,9 @@ class CanaryEvaluateIn(BaseModel):
     since_hours: float = Field(default=24.0, gt=0, le=24 * 365)
     policy: CanaryPolicyIn = Field(default_factory=CanaryPolicyIn)
     evaluate_first: bool = Field(default=True, description="Score unscored runs on both sides first")
+    scorers: list[str] | None = Field(
+        default=None, max_length=30,
+        description="Scorers to run first. Omit for the defaults; add 'answer_judge' to have a model grade each answer.")
     diagnose_first: bool = Field(default=True, description="Diagnose undiagnosed runs on both sides first")
     save: bool = True
 

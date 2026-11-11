@@ -124,8 +124,11 @@ the same 24 questions each and writes `docs/real-verdicts.md`. The numbers below
 - **The only real rollback used a planted fault** (section 4). I have not seen a real model break on its own in a canary, and I
   chose the thresholds myself, so how they behave on other agents is untested. In a test with fake model servers, an identical
   candidate was promoted, which matches the real promote above.
-- **The canary cannot see wrong-but-well-formed answers.** In that same test, a candidate that answered "I am not sure" to
-  everything was promoted, because the built-in checks look at errors and speed, not correctness.
+- **The canary could not see wrong-but-well-formed answers.** In a test with fake model servers and no expected answers on the
+  runs, a candidate that answered "I am not sure" to everything was promoted, because the checks then looked only at errors and
+  speed. That led to the answer-correctness work: a `gives_an_answer` check that catches non-answers with no labels, and an
+  optional model judge for confident wrong answers. See [answer-correctness.md](answer-correctness.md) for what each one
+  does and does not catch. The real-model comparisons above did carry expected answers.
 - **Benchmark scores are shaky at this size.** The Benchmark page ranked `nvidia/nemotron-3.5-lightning:free` at 83% and
   `mistral-small-latest` at 0%, but the 0% most likely reflects rate-limited calls, not poor answers, and Gemini and
   Ollama had no checked answers. Do not read it as a model ranking.

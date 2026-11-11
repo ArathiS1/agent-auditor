@@ -79,7 +79,7 @@ TAXONOMY: dict[str, dict[str, Any]] = {
                    "Look at the last LLM step's output for these runs."],
     },
     "wrong_answer": {
-        "meaning": "The run finished without error but its answer did not meet what the test or benchmark expected.",
+        "meaning": "The run finished without error but its answer did not meet what the test expected, was a non-answer ('I am not sure'), or was graded as wrong by a judge model.",
         "advice": ["Read the failed expectation in the run's evidence, then compare the answer with what was expected.",
                    "If many models miss the same question, the question or the expected answer may be wrong; otherwise check the prompt and the model."],
     },
@@ -229,6 +229,10 @@ def classify_run(
     for name in extra:
         if name == "expectations_met":
             soft.append(Finding("wrong_answer", "moderate", ("the answer did not meet the expectations tagged on this run",)))
+        elif name == "gives_an_answer":
+            soft.append(Finding("wrong_answer", "moderate", ("the answer was a non-answer such as 'I am not sure' or 'I can't help with that'",)))
+        elif name == "answer_judge":
+            soft.append(Finding("wrong_answer", "moderate", ("the judge model graded this answer as not correct",)))
         elif name == "human_feedback":
             soft.append(Finding("user_rejected", "strong", ("a person marked this answer as bad",)))
         else:

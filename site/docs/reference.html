@@ -27,6 +27,7 @@
     <a href="reference.html" aria-current="page">Reference</a>
     <a href="architecture.html">Architecture</a>
     <a href="deployment.html">Deployment</a>
+    <a href="answer-correctness.html">Wrong answers</a>
     <a href="case-study.html">Case study</a>
     <a class="ext" href="https://github.com/ArathiS1/agent-auditor">Source on GitHub</a>
   </aside>
@@ -208,6 +209,18 @@ against a running server. In Swagger (<code>/docs</code>) use the <strong>Author
 <tr>
 <td><code>grounded_overlap</code></td>
 <td>most of the answer's terms appear in the retrieved text (a weak heuristic)</td>
+</tr>
+<tr>
+<td><code>expectations_met</code></td>
+<td>the answer meets the text rules the run was tagged with (<code>tags.expect</code>); not applicable without them</td>
+</tr>
+<tr>
+<td><code>gives_an_answer</code></td>
+<td>a short answer is not a non-answer such as "I am not sure" or "I can't help with that" (a heuristic, for runs with no <code>tags.expect</code>)</td>
+</tr>
+<tr>
+<td><code>answer_judge</code></td>
+<td>a model grades the answer from 0 to 1 (off by default; see <a href="answer-correctness.html">answer-correctness.md</a>)</td>
 </tr>
 </tbody>
 </table></div>
@@ -417,7 +430,11 @@ Override any threshold with <code>policy={...}</code> (see <code>canary/checks.p
 <code>python bench/canary.py --baseline &lt;model&gt; --candidate &lt;model&gt;</code> asks both the same 24 questions, records the baseline in
 <code>production</code> and the candidate in <code>canary</code>, scores the runs, and prints and saves the verdict (see the dashboard's Canary
 page). If either side gets fewer runs than asked, for example because a key ran out of quota, the verdict is
-"continue" and says why. It cannot see wrong-but-well-formed answers; use the Benchmark page for answer quality.</p>
+"continue" and says why. Those runs carry expected answers. Real traffic does not, so add <code>--unlabeled</code> to hide them (the
+verdict then relies on errors, speed and the <code>gives_an_answer</code> check) and <code>--judge</code> to have a model grade every answer.
+<code>canary/evaluate</code> accepts <code>scorers</code> (SDK: <code>evaluate_canary(scorers=[...])</code>) to choose what is run on unscored runs first;
+a scorer that cannot run, such as a judge with no key, appears as a <code>scorers</code> warning in the report instead of silently
+dropping out. What each check can and cannot catch is in <a href="answer-correctness.html">answer-correctness.md</a>.</p>
 <h2 id="releases-approval-gates-and-rollback-phase-8">Releases: approval gates and rollback (Phase 8)</h2>
 <p>A release asks to make a candidate version the <em>active</em> one. The gate decides whether that may happen.</p>
 <pre><code class="language-python">rel = auditor.propose_release(&quot;v2&quot;, proposed_by=&quot;alice&quot;, policy={&quot;required_approvals&quot;: 1})
@@ -533,7 +550,9 @@ def answer(question): ...
   asymptotic KS p-values (close to exact for n &gt;= 30). Drift needs at least <code>min_samples</code> runs per window.</li>
 <li>Evals and diagnosis can run inside a request (up to 500 runs per call). <code>agent-auditor-worker</code> does it in the
   background and is the recommended setup; it polls, so results lag by up to one interval.</li>
-<li>Built-in scorers detect symptoms, not answer quality. <code>grounded_overlap</code> is a cheap heuristic.</li>
+<li>Without expected answers, the built-in scorers detect symptoms and non-answers, not wrong answers.
+  <code>grounded_overlap</code> and <code>gives_an_answer</code> are cheap heuristics. Only <code>expectations_met</code> (needs your answer key) and
+  the optional <code>answer_judge</code> (needs a model and sends each question and answer to it) can say an answer is wrong.</li>
 <li>Local use creates tables with <code>create_all</code>; Docker uses Alembic. The baseline migration is generated from the
   current models and must be made explicit before the first model change (see the note in the migration).</li>
 <li>The PostgreSQL CI job is experimental; SQLite is the tested backend until it is green.</li>

@@ -236,7 +236,7 @@ agent-auditor demo
   <h2>What it does not do yet.</h2>
   <p class="lede">Alpha software, run on one developer's machine and not proven under production load.</p>
   <ul class="limits">
-    <li><strong>It checks symptoms, not facts.</strong> Errors, speed and empty answers are caught. A wrong answer that looks well formed is not.</li>
+    <li><strong>Without an answer key, it cannot see a confident wrong answer.</strong> Errors, speed and "I am not sure" replies are caught with no setup. A fluent wrong answer needs expected answers on your runs, or the optional model judge, which can itself be wrong. <a href="docs/answer-correctness.html">What each check catches</a></li>
     <li><strong>Fixes are proposals.</strong> A person registers a candidate, the tests replay on it, a canary compares it and someone else approves it.</li>
     <li><strong>Approver names are self-asserted</strong> behind one shared API key. Real authentication is on the roadmap.</li>
     <li><strong>Promotion deploys nothing.</strong> It marks a version active.</li>

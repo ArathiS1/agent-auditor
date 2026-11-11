@@ -551,10 +551,12 @@ class Auditor:
         evaluate_first: bool = True,
         diagnose_first: bool = True,
         save: bool = True,
+        scorers: list[str] | None = None,
     ) -> dict[str, Any]:
         """Compare the candidate's recent runs with the baseline's and get promote / hold / rollback /
         continue, with every check that led there. `policy` overrides any threshold, for example
-        {"min_canary_runs": 100, "require_replay": True}."""
+        {"min_canary_runs": 100, "require_replay": True}. `scorers` picks the checks run on unscored runs first
+        (default: the built-in set); add "answer_judge" to have a model grade each answer."""
         name = quote(agent or self.agent, safe="")
         body = {
             "baseline": baseline, "candidate": candidate, "baseline_environment": baseline_environment,
@@ -563,6 +565,8 @@ class Auditor:
         }
         if policy:
             body["policy"] = policy
+        if scorers is not None:
+            body["scorers"] = list(scorers)
         return self._api("POST", f"/v1/agents/{name}/canary/evaluate", json=body)
 
     def list_canary_reports(self, *, agent: str | None = None, candidate: str | None = None, limit: int = 20) -> list[dict[str, Any]]:

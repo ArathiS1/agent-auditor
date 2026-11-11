@@ -88,6 +88,9 @@ Scorers look at stored runs and say pass / fail / not applicable. Built-ins need
 | `retrieval_top_score` | the best retrieval score is at least the threshold (default 0.5) |
 | `latency_within_budget` | the run finished within `budget_ms` (default 10 000) |
 | `grounded_overlap` | most of the answer's terms appear in the retrieved text (a weak heuristic) |
+| `expectations_met` | the answer meets the text rules the run was tagged with (`tags.expect`); not applicable without them |
+| `gives_an_answer` | a short answer is not a non-answer such as "I am not sure" or "I can't help with that" (a heuristic, for runs with no `tags.expect`) |
+| `answer_judge` | a model grades the answer from 0 to 1 (off by default; see [answer-correctness.md](answer-correctness.md)) |
 
 "Not applicable" (for example a retrieval scorer on a run that never retrieved) is stored but never
 counted as a pass or a failure.
@@ -276,7 +279,11 @@ Try it: `python examples/canary_demo.py` (server running). Expect v2 to be a rol
 `python bench/canary.py --baseline <model> --candidate <model>` asks both the same 24 questions, records the baseline in
 `production` and the candidate in `canary`, scores the runs, and prints and saves the verdict (see the dashboard's Canary
 page). If either side gets fewer runs than asked, for example because a key ran out of quota, the verdict is
-"continue" and says why. It cannot see wrong-but-well-formed answers; use the Benchmark page for answer quality.
+"continue" and says why. Those runs carry expected answers. Real traffic does not, so add `--unlabeled` to hide them (the
+verdict then relies on errors, speed and the `gives_an_answer` check) and `--judge` to have a model grade every answer.
+`canary/evaluate` accepts `scorers` (SDK: `evaluate_canary(scorers=[...])`) to choose what is run on unscored runs first;
+a scorer that cannot run, such as a judge with no key, appears as a `scorers` warning in the report instead of silently
+dropping out. What each check can and cannot catch is in [answer-correctness.md](answer-correctness.md).
 
 ## Releases: approval gates and rollback (Phase 8)
 
@@ -422,7 +429,9 @@ See `../examples/quickstart_plain.py` and `../examples/langgraph_demo.py`.
   asymptotic KS p-values (close to exact for n >= 30). Drift needs at least `min_samples` runs per window.
 - Evals and diagnosis can run inside a request (up to 500 runs per call). `agent-auditor-worker` does it in the
   background and is the recommended setup; it polls, so results lag by up to one interval.
-- Built-in scorers detect symptoms, not answer quality. `grounded_overlap` is a cheap heuristic.
+- Without expected answers, the built-in scorers detect symptoms and non-answers, not wrong answers.
+  `grounded_overlap` and `gives_an_answer` are cheap heuristics. Only `expectations_met` (needs your answer key) and
+  the optional `answer_judge` (needs a model and sends each question and answer to it) can say an answer is wrong.
 - Local use creates tables with `create_all`; Docker uses Alembic. The baseline migration is generated from the
   current models and must be made explicit before the first model change (see the note in the migration).
 - The PostgreSQL CI job is experimental; SQLite is the tested backend until it is green.

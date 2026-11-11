@@ -25,6 +25,7 @@ PAGES = [
     ("reference", DOCS / "reference.md", "Reference"),
     ("architecture", DOCS / "architecture.md", "Architecture"),
     ("deployment", DOCS / "deployment.md", "Deployment"),
+    ("answer-correctness", DOCS / "answer-correctness.md", "Wrong answers"),
     ("case-study", DOCS / "case-study.md", "Case study"),
 ]
 GENERATED = {src.name: out for out, src, _ in PAGES}

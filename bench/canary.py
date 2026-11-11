@@ -13,8 +13,11 @@ The verdict is saved, so it appears on the dashboard's Canary page (and in the a
 A verdict needs at least --runs runs on both sides (default 24: the 14 benchmark questions, repeated).
 Fewer than that and the Auditor correctly answers "continue" and explains why.
 
-What the verdict can and cannot see: errors, speed, the built-in quality checks and failure causes. It cannot tell that
-a model gave a wrong but well-formed answer; compare answers with `python bench/run.py` (the Benchmark page) as well.
+What the verdict can and cannot see. Each question here carries the answer it expects, so wrong answers are caught. Real
+traffic has no such labels, so --unlabeled hides them: then the verdict relies on errors, speed, and the check for non-answers
+("I am not sure"). A confident wrong answer is only caught by --judge, which has a model grade every answer (the Auditor
+server needs AUDITOR_JUDGE_BASE_URL, AUDITOR_JUDGE_API_KEY and AUDITOR_JUDGE_MODEL; it sends each question and answer to that
+model). See docs/answer-correctness.md.
 """
 from __future__ import annotations
 
@@ -87,6 +90,12 @@ def main(argv: list[str] | None = None, transport=None) -> int:
     ap.add_argument("--break-candidate", action="store_true",
                     help="plant a fault: the candidate is the same model reached through a wrong address, so every call fails "
                          "(a stand-in for a bad config push). Use it to see a rollback.")
+    ap.add_argument("--unlabeled", action="store_true",
+                    help="do not attach the expected answers to the runs, the way real traffic arrives")
+    ap.add_argument("--judge", action="store_true",
+                    help="also have a model grade each answer (scorer answer_judge; the Auditor server must be configured for it)")
+    ap.add_argument("--scorers", default="",
+                    help="comma list of scorers to run before the verdict (default: the built-in set)")
     ap.add_argument("--list", action="store_true", help="show the models that have a key, then stop")
     ap.add_argument("--auditor", default=os.environ.get("AUDITOR_URL", "http://127.0.0.1:8000"))
     ap.add_argument("--key", default=os.environ.get("AUDITOR_API_KEY", ""))
@@ -144,6 +153,15 @@ def main(argv: list[str] | None = None, transport=None) -> int:
         return 2
 
     questions = [QUESTIONS[i % len(QUESTIONS)] for i in range(args.runs)]
+    if args.unlabeled:
+        questions = [dict(q, expect=[]) for q in questions]
+    scorers = [s.strip() for s in args.scorers.split(",") if s.strip()] or None
+    if args.judge:
+        from agent_auditor.evals.scorers import default_scorer_names
+
+        scorers = list(scorers or default_scorer_names())
+        if "answer_judge" not in scorers:
+            scorers.append("answer_judge")
     print(f"Baseline : {base_p.model} ({base_p.name}), version {base_label}, environment production")
     print(f"Candidate: {cand_p.model} ({cand_p.name}), version {cand_label}, environment canary")
     print(f"{args.runs} questions each.\n")
@@ -166,7 +184,7 @@ def main(argv: list[str] | None = None, transport=None) -> int:
     report = base_aud.evaluate_canary(
         baseline=base_label, candidate=cand_label, agent=args.agent,
         baseline_environment="production", candidate_environment="canary", since_hours=args.since_hours,
-        policy={"min_canary_runs": args.runs, "min_baseline_runs": args.runs},
+        policy={"min_canary_runs": args.runs, "min_baseline_runs": args.runs}, scorers=scorers,
     )
     LAST.clear()
     LAST.update(report=report, baseline=base_label, candidate=cand_label, agent=args.agent, runs=args.runs,

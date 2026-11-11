@@ -7,7 +7,7 @@
   <img alt="status" src="https://img.shields.io/badge/status-alpha-orange">
   <img alt="python" src="https://img.shields.io/badge/python-3.11%2B-blue">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-green">
-  <img alt="tests" src="https://img.shields.io/badge/tests-426%20passing-brightgreen">
+  <img alt="tests" src="https://img.shields.io/badge/tests-455%20passing-brightgreen">
   <img alt="core runs offline" src="https://img.shields.io/badge/core-runs%20offline-lightgrey">
 </p>
 
@@ -40,7 +40,7 @@ run -> score -> root cause -> regression test -> proposed fix -> replay the test
 | Step | What you get |
 |---|---|
 | **Trace** | Every run with its steps (model calls, tools, retrieval) from a small Python SDK |
-| **Evaluate** | Built-in checks that need no API key (errors, latency, empty answers, grounding), plus your own judge |
+| **Evaluate** | Built-in checks that need no API key (errors, latency, empty answers, grounding, "I am not sure" answers), your own answer key, and an optional model judge for wrong answers |
 | **Explain** | A root-cause label per failure (rate limit, tool error, bad retrieval, slow run...) and which change likely caused it |
 | **Remember** | One click turns a failed run into a regression test that is replayed against every new version |
 | **Compare** | Drift detection and a canary that rolls back a version that is measurably worse |
@@ -183,7 +183,7 @@ What the loop looks like on a real incident (numbers are illustrative):
 | Area | Contents | State |
 |---|---|---|
 | Core | Data model, FastAPI ingestion, versioned prompts and configs, audit events, Python SDK, LangGraph adapter | done |
-| Evals | 7 built-in scorers, your own judge, version-to-version regression verdicts | done |
+| Evals | 9 built-in scorers (including answer-key and non-answer checks), an optional model judge, version-to-version regression verdicts | done |
 | Drift | Numeric, rate and term-mix signals with significance tests | done |
 | Failure to test | Failed runs become deduplicated regression cases; replay against any version | done |
 | Root causes | 11 cause types with sub-causes, suspect documents, change attribution | done |
@@ -225,13 +225,16 @@ Many failures, such as slow runs and rate limits, come from the model or provide
 | [docs/reference.md](docs/reference.md) | Every phase in detail: evals, drift, failure-to-test, root causes, canary, releases, attribution |
 | [docs/architecture.md](docs/architecture.md) | How the pieces fit |
 | [docs/deployment.md](docs/deployment.md) | Docker, PostgreSQL, secrets |
+| [docs/answer-correctness.md](docs/answer-correctness.md) | Catching wrong or empty answers when you have no answer key, and what that cannot catch |
 | [docs/publishing.md](docs/publishing.md) | How a release reaches PyPI |
 | [docs/case-study.md](docs/case-study.md) | A worked example: Agent Auditor watching its own chat agent, including what did not work |
 
 ## Known limitations
 
 - Alpha software. It has been run on one machine and is not yet proven under production load.
-- Built-in scorers detect symptoms (errors, latency, empty answers), not whether an answer is factually right.
+- Without an answer key, the built-in checks catch errors, slowness and non-answers ("I am not sure"), not confident wrong
+  answers. For those you give the runs expected answers, or turn on the optional model judge, which sends each question and
+  answer to a model you choose and can itself be wrong. See [docs/answer-correctness.md](docs/answer-correctness.md).
 - Approver names are self-asserted behind one shared API key. Promotion marks a version active; it deploys nothing.
 - Replay needs an agent that can be called again with the stored inputs. Agents that depend on live sessions or
   external state cannot be replayed faithfully.

@@ -23,16 +23,24 @@ MAX_DRIFT_RUNS = 2000
 POLICY_FIELDS = {f.name for f in fields(Policy)}
 
 
-def _prepare(db: Session, agent: str, version: str, environment: str, since_hours: float, evaluate: bool, diagnose: bool) -> None:
-    """Score and diagnose the runs on one side that have no results yet (bounded work)."""
+def _prepare(db: Session, agent: str, version: str, environment: str, since_hours: float, evaluate: bool, diagnose: bool,
+             scorers: list[str] | None = None) -> dict[str, str]:
+    """Score and diagnose the runs on one side that have no results yet (bounded work).
+    Returns the scorers that raised an error (name -> message), so the report can say they did not count."""
+    errors: dict[str, str] = {}
     for _ in range(MAX_PREP_BATCHES):
-        res = evaluate_runs(db, agent=agent, version=version, environment=environment, limit=500, only_unevaluated=True) if evaluate else None
+        res = (evaluate_runs(db, agent=agent, version=version, environment=environment, limit=500, only_unevaluated=True,
+                             scorers=scorers) if evaluate else None)
+        if res is not None:
+            for name, message in res.scorer_errors.items():
+                errors.setdefault(name, message)
         if res is None or not res.has_more:
             break
     for _ in range(MAX_PREP_BATCHES):
         out = diagnose_runs(db, agent=agent, environment=environment, version=version, since_hours=since_hours, limit=500) if diagnose else None
         if out is None or not out["has_more"]:
             break
+    return errors
 
 
 def _diagnosis_rows(db: Session, agent_id: str, label: str, environment: str, since) -> list[dict[str, Any]]:
@@ -76,6 +84,7 @@ def canary_report(
     evaluate_first: bool = True,
     diagnose_first: bool = True,
     save: bool = True,
+    scorers: list[str] | None = None,
 ) -> dict[str, Any]:
     """Compare the candidate's runs with the baseline's over the last `since_hours`. Caller commits."""
     if since_hours <= 0:
@@ -95,8 +104,9 @@ def canary_report(
     since = now - timedelta(hours=since_hours)
     end = now + timedelta(seconds=1)
 
-    _prepare(db, agent, baseline, baseline_environment, since_hours, evaluate_first, diagnose_first)
-    _prepare(db, agent, candidate, candidate_environment, since_hours, evaluate_first, diagnose_first)
+    scorer_errors = _prepare(db, agent, baseline, baseline_environment, since_hours, evaluate_first, diagnose_first, scorers)
+    for name, message in _prepare(db, agent, candidate, candidate_environment, since_hours, evaluate_first, diagnose_first, scorers).items():
+        scorer_errors.setdefault(name, message)
     db.flush()
 
     base_conds = _conditions(agent_row.id, since, end, baseline_environment, base_v.id)
@@ -111,6 +121,12 @@ def canary_report(
             pol,
         ),
     ]
+    if scorer_errors:  # a scorer that cannot run must not silently drop out of the verdict
+        detail = "; ".join(f"{n}: {m}" for n, m in sorted(scorer_errors.items()))
+        checks.append(CheckResult(
+            "scorers", "warn", "none",
+            "some scorers could not run, so they are not part of this verdict (" + detail[:300] + ")",
+            {"errors": scorer_errors}))
     if n_base >= pol.min_baseline_runs and n_cand >= pol.min_canary_runs:
         checks.append(check_latency(_latencies(db, base_conds), _latencies(db, cand_conds), pol))
         checks.append(check_causes(
@@ -129,7 +145,8 @@ def canary_report(
             checks.append(CheckResult(name, "skipped", "none", "not enough live runs on both sides yet"))
     checks.append(check_replay(_latest_replay(db, agent_row.id, candidate), pol))
     version_diff = diff_versions(base_v.prompt, base_v.config, cand_v.prompt, cand_v.config)
-    checks.append(check_change(version_diff, next((c for c in checks if c.name == "causes"), None), list(checks)))
+    checks.append(check_change(version_diff, next((c for c in checks if c.name == "causes"), None),
+                               [c for c in checks if c.name != "scorers"]))
 
     decision = decide(checks, canary_runs=n_cand, baseline_runs=n_base, policy=pol)
     data = _sanitize({

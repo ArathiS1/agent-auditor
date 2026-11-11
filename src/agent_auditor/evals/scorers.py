@@ -188,6 +188,45 @@ def grounded_overlap(run: RunView, params: dict[str, Any]) -> ScoreResult | None
                        {"threshold": threshold, "answer_terms": len(answer_tokens)})
 
 
+_NON_ANSWER = re.compile(
+    r"\bi(?:'m| am) not (?:really |entirely |completely )?sure\b"
+    r"|\bi (?:do not|don't|dont) (?:really )?know\b"
+    r"|\bno idea\b"
+    r"|\bi (?:cannot|can ?not|can't|am unable to|'m unable to|am not able to|'m not able to|won't|will not) "
+    r"(?:help|answer|assist|provide|say|tell|respond|do that|find)"
+    r"|\bunable to (?:help|answer|assist|provide)\b"
+    r"|\bi (?:do not|don't) have (?:enough |any )?(?:information|access|an answer)\b"
+    r"|\bas an ai\b|\bas a language model\b|\bi(?:'m| am) sorry,? but\b",
+    re.IGNORECASE,
+)
+
+
+def gives_an_answer(run: RunView, params: dict[str, Any]) -> ScoreResult | None:
+    """Heuristic: is the answer a non-answer ("I am not sure", "I don't know", "I can't help with that")?
+
+    It exists for runs that carry no expected answer, which is most real traffic. It only looks at short answers,
+    because a long answer that contains one hedge is usually still an answer. A refusal is sometimes the right
+    behaviour, so the signal is only useful as a *change*: the canary compares the rate between two versions.
+    Runs tagged with expectations are left to `expectations_met`, which knows what the right answer is.
+    """
+    expect = (run.tags or {}).get("expect")
+    if isinstance(expect, list) and expect:
+        return None
+    if run.status != "ok":
+        return None
+    answer = _answer_text(run.output)
+    if answer is None or not answer.strip():
+        return None
+    max_words = int(_num(params, "max_words", 30))
+    words = len(answer.split())
+    if words > max_words:
+        return ScoreResult(1.0, True, f"answer has {words} words, longer than a non-answer", {"words": words})
+    found = _NON_ANSWER.search(answer.replace("’", "'"))
+    if found is None:
+        return ScoreResult(1.0, True, "answer is not a refusal or a hedge", {"words": words})
+    return ScoreResult(0.0, False, f"answer is a non-answer ('{found.group(0).strip()}')", {"words": words, "matched": found.group(0)})
+
+
 # ---------------------------------------------------------------- registry
 _REGISTRY: dict[str, ScorerSpec] = {}
 
@@ -264,8 +303,22 @@ for _spec in (
     ScorerSpec("latency_within_budget", latency_within_budget, "Run finished within the latency budget", {"budget_ms": 10_000}),
     ScorerSpec("grounded_overlap", grounded_overlap, "Answer terms appear in retrieved text (heuristic)", {"threshold": 0.5}),
     ScorerSpec("expectations_met", expectations_met, "Answer meets the expectations the run was tagged with (tags.expect)"),
+    ScorerSpec("gives_an_answer", gives_an_answer,
+               "Answer is not a non-answer such as 'I am not sure' (heuristic, for runs with no expectations)", {"max_words": 30}),
 ):
     register_scorer(_spec)
+
+
+def _answer_judge(run: RunView, params: dict[str, Any]) -> ScoreResult | None:
+    from .judge import answer_judge
+
+    return answer_judge(run, params)
+
+
+register_scorer(ScorerSpec(
+    "answer_judge", _answer_judge,
+    "A model grades each answer from 0 to 1 (off by default; needs AUDITOR_JUDGE_BASE_URL, _API_KEY and _MODEL on the server)",
+    {"threshold": 0.5}, default_enabled=False))
 
 
 def evaluate_run(

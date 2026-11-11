@@ -27,6 +27,7 @@
     <a href="reference.html">Reference</a>
     <a href="architecture.html">Architecture</a>
     <a href="deployment.html">Deployment</a>
+    <a href="answer-correctness.html">Wrong answers</a>
     <a href="case-study.html" aria-current="page">Case study</a>
     <a class="ext" href="https://github.com/ArathiS1/agent-auditor">Source on GitHub</a>
   </aside>
@@ -267,8 +268,11 @@ the same 24 questions each and writes <code>docs/real-verdicts.md</code>. The nu
 <li><strong>The only real rollback used a planted fault</strong> (section 4). I have not seen a real model break on its own in a canary, and I
   chose the thresholds myself, so how they behave on other agents is untested. In a test with fake model servers, an identical
   candidate was promoted, which matches the real promote above.</li>
-<li><strong>The canary cannot see wrong-but-well-formed answers.</strong> In that same test, a candidate that answered "I am not sure" to
-  everything was promoted, because the built-in checks look at errors and speed, not correctness.</li>
+<li><strong>The canary could not see wrong-but-well-formed answers.</strong> In a test with fake model servers and no expected answers on the
+  runs, a candidate that answered "I am not sure" to everything was promoted, because the checks then looked only at errors and
+  speed. That led to the answer-correctness work: a <code>gives_an_answer</code> check that catches non-answers with no labels, and an
+  optional model judge for confident wrong answers. See <a href="answer-correctness.html">answer-correctness.md</a> for what each one
+  does and does not catch. The real-model comparisons above did carry expected answers.</li>
 <li><strong>Benchmark scores are shaky at this size.</strong> The Benchmark page ranked <code>nvidia/nemotron-3.5-lightning:free</code> at 83% and
   <code>mistral-small-latest</code> at 0%, but the 0% most likely reflects rate-limited calls, not poor answers, and Gemini and
   Ollama had no checked answers. Do not read it as a model ranking.</li>

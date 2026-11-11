@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Catching wrong answers when you have no answer key | Agent Auditor</title>
+<meta name="description" content="A canary compares a new version of an agent with the live one. Errors and slowness are easy to see. A wrong answer is harder: a candidate that replies &quot;I am not sure.&quot; to everythin">
+<meta name="theme-color" content="#13211c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23c4350a'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar"><div class="wrap">
+  <a class="brand" href="../index.html"><span class="dot"></span>Agent Auditor</a>
+  <nav aria-label="Main">
+    <a href="../index.html#loop">How it works</a>
+    <a href="../index.html#verdict">Real result</a>
+    <a href="index.html" aria-current="page">Docs</a>
+    <a class="gh" href="https://github.com/ArathiS1/agent-auditor">GitHub</a>
+  </nav>
+</div></header>
+<div class="wrap docs">
+  <aside class="side" aria-label="Documentation">
+    <h4>Documentation</h4>
+    <a href="index.html">Overview</a>
+    <a href="reference.html">Reference</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="deployment.html">Deployment</a>
+    <a href="answer-correctness.html" aria-current="page">Wrong answers</a>
+    <a href="case-study.html">Case study</a>
+    <a class="ext" href="https://github.com/ArathiS1/agent-auditor">Source on GitHub</a>
+  </aside>
+  <main class="art" id="main">
+<h1 id="catching-wrong-answers-when-you-have-no-answer-key">Catching wrong answers when you have no answer key</h1>
+<p>A canary compares a new version of an agent with the live one. Errors and slowness are easy to see. A wrong answer is
+harder: a candidate that replies "I am not sure." to everything, or one that replies fluently and gets the facts wrong,
+throws no error and is not slow. This page says what Agent Auditor can catch, how, and what it still cannot.</p>
+<h2 id="what-catches-what">What catches what</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>The candidate...</th>
+<th>Expected answers on the runs (<code>tags.expect</code>)</th>
+<th>No expected answers (most real traffic)</th>
+<th>Judge on (<code>answer_judge</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>errors or times out</td>
+<td>caught</td>
+<td>caught</td>
+<td>caught</td>
+</tr>
+<tr>
+<td>is much slower</td>
+<td>caught</td>
+<td>caught</td>
+<td>caught</td>
+</tr>
+<tr>
+<td>answers "I am not sure" or "I can't help with that"</td>
+<td>caught (<code>expectations_met</code>)</td>
+<td>caught (<code>gives_an_answer</code>)</td>
+<td>caught</td>
+</tr>
+<tr>
+<td>answers fluently and wrongly</td>
+<td>caught (<code>expectations_met</code>)</td>
+<td><strong>not caught</strong></td>
+<td>caught, as well as the judge grades</td>
+</tr>
+<tr>
+<td>is wrong in a way only a domain expert would notice</td>
+<td>only if you wrote that rule</td>
+<td>not caught</td>
+<td>not caught reliably</td>
+</tr>
+</tbody>
+</table></div>
+<p>The middle column is the honest limit. With no answer key and no judge, a confident wrong answer looks like any other answer.</p>
+<h2 id="1-give-the-runs-an-answer-key">1. Give the runs an answer key</h2>
+<p>If you have questions with known answers (a regression suite, a benchmark, a support FAQ), tag each run with what a good
+answer must contain. This is exact, free and needs no model:</p>
+<pre><code class="language-python">with auditor.run(input=question, tags={&quot;expect&quot;: [{&quot;type&quot;: &quot;output_contains&quot;, &quot;value&quot;: &quot;Canberra&quot;}]}):
+    ...
+</code></pre>
+<p>The rule types are in <code>agent_auditor/evals/expect.py</code> (contains, does not contain, contains any, matches a pattern, word
+limits). The scorer is <code>expectations_met</code>. <code>bench/canary.py</code> does this for its 14 questions.</p>
+<h2 id="2-gives_an_answer-non-answers-with-no-labels">2. <code>gives_an_answer</code>: non-answers, with no labels</h2>
+<p>On by default. For a short answer (30 words or fewer, a setting) it flags "I am not sure", "I don't know", "I can't help with
+that", "as an AI" and similar. Longer answers pass, because a long answer with one hedge is usually still an answer. Runs that
+carry <code>tags.expect</code> are skipped, because <code>expectations_met</code> knows the right answer.</p>
+<p>What to expect from it:</p>
+<ul>
+<li>It is a <strong>change detector</strong>. A good agent also refuses or says "I don't know" sometimes, and rightly. In the offline demo
+  below, 2 of the baseline's 14 questions are ones where refusing is the correct answer, and they count as non-answers on both
+  sides. That is fine, because the canary compares the rate between baseline and candidate. A jump from 14% to 100% is the signal.</li>
+<li>A failed check is diagnosed as the cause <code>wrong_answer</code>, so the Causes check agrees with the Evals check.</li>
+<li>It does nothing about a confident wrong answer.</li>
+</ul>
+<h2 id="3-answer_judge-a-model-grades-each-answer">3. <code>answer_judge</code>: a model grades each answer</h2>
+<p>Off by default, because it costs money, sends each run's question and answer to the model you choose, and can be wrong.
+Turn it on by pointing the Auditor server at any OpenAI-compatible chat endpoint:</p>
+<pre><code>AUDITOR_JUDGE_BASE_URL=https://api.openai.com/v1
+AUDITOR_JUDGE_API_KEY=...
+AUDITOR_JUDGE_MODEL=gpt-5-mini
+</code></pre>
+<p>Then ask for it by name, in an evaluation (<code>"scorers": ["answer_judge"]</code>) or in a canary check:</p>
+<pre><code class="language-python">report = auditor.evaluate_canary(baseline=&quot;v1&quot;, candidate=&quot;v2&quot;,
+                                 scorers=[*default_scorer_names(), &quot;answer_judge&quot;])
+</code></pre>
+<p>or, with the chat benchmark, <code>python bench/canary.py --baseline a --candidate b --unlabeled --judge</code>.</p>
+<p>How it behaves:</p>
+<ul>
+<li>It grades from 0 to 1 and passes at 0.5 or more (<code>threshold</code> is a parameter). A run tagged with <code>tags.reference</code> is graded
+  against that reference answer. Without one, the judge uses its own knowledge and is told to score 0.5 or lower when it cannot
+  tell, so it is better at common knowledge than at your private data.</li>
+<li>The question and answer are passed as data and the judge is told to ignore instructions inside them, but a judge model can
+  still be misled by an adversarial answer. Do not treat its grade as proof.</li>
+<li>If the judge is not configured, times out or replies in a form that cannot be read, the failure is reported as a scorer
+  error. The canary report then carries a <code>scorers</code> warning ("answer_judge: not configured...") instead of quietly leaving the
+  judge out. With <code>warnings_block</code> on, that warning holds the release.</li>
+<li>Each run is graded once and the grade is stored. It runs when you ask for it, over unscored runs, not on every request.</li>
+</ul>
+<h2 id="see-it-work-offline-about-5-seconds">See it work (offline, about 5 seconds)</h2>
+<pre><code>python bench/wrong_answers.py
+</code></pre>
+<p>It plays two scripted candidates against a good baseline, 28 runs each, with the expected answers hidden:</p>
+<pre><code>candidate A: answers &quot;I am not sure.&quot; to everything
+  built-in checks before this change             PROMOTE
+  built-in checks now (adds gives_an_answer)     ROLLBACK    caught by: gives_an_answer
+  built-in checks plus answer_judge              ROLLBACK    caught by: answer_judge, gives_an_answer
+
+candidate B: confident, fluent, and wrong
+  built-in checks before this change             PROMOTE
+  built-in checks now (adds gives_an_answer)     PROMOTE
+  built-in checks plus answer_judge              ROLLBACK    caught by: answer_judge
+</code></pre>
+<p>"Before" is the same runs scored with the checks that existed before <code>gives_an_answer</code>. These are scripted models, and the
+judge here is a scripted stand-in that grades with the benchmark's own answer key, so it shows how the verdict behaves, not
+how well a real judge model grades. Candidate B's <code>PROMOTE</code> in the middle row is the point: no heuristic sees it.</p>
+<h2 id="what-is-still-open">What is still open</h2>
+<ul>
+<li>A real judge has not been measured against human grades here. Before you let it block releases, read a sample of its
+  grades next to the answers.</li>
+<li>24 to 30 runs per side is a small sample. A non-answer jump from 0% to 100% is unmistakable; a move from 5% to 15% is not.</li>
+<li>The judge sends data to a third party. Use a judge you are allowed to send that data to.</li>
+</ul>
+  </main>
+</div>
+<script src="../site.js"></script>
+</body>
+</html>
