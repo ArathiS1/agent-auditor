@@ -84,7 +84,28 @@ How to read it: the candidate was not wrong or broken, it was **slower**. The Au
 back, because its rollback threshold is 4x on latency and this was 3.16x, and nothing else regressed. That is the
 decision I would have made by hand, but I got it with numbers and a named check behind it.
 
-Still missing: a **rollback** and a **promote** result. I did not get either one on real models.
+**Third attempt (11 November): all three verdicts.** I wrote `bench/verdicts.py`, which runs three checks on real models with
+the same 24 questions each and writes `docs/real-verdicts.md`. The numbers below are from that report.
+
+| Check | Baseline (production) | Candidate (canary) | Median | 95th percentile | Verdict |
+|---|---|---|---|---|---|
+| A slower candidate | Indos `deepseek-v4-flash` | AIRouter `gpt-5-nano` | 2.6 s vs 4.7 s | 5.0 s vs 7.6 s | **promote** (I expected hold) |
+| A broken candidate (planted fault) | Indos `deepseek-v4-flash` | the same model through a wrong address | 2.6 s vs 2.1 s | 5.0 s vs 2.1 s | **rollback** |
+| A faster candidate | AIRouter `gpt-5-nano` | Indos `deepseek-v4-flash` | 4.3 s vs 1.9 s | 8.6 s vs 4.2 s | **promote** |
+
+- **Rollback worked, but the fault was planted.** All 24 candidate calls failed. Evals failed on four checks and a new cause,
+  `llm_error`, went from 0% to 100% of runs. This shows that the gate stops a broken release, not that a real model failed alone.
+- **Promote worked.** The faster model was 0.47x the baseline's time and nothing got worse.
+- **The first check surprised me.** The same two models that earned a hold on 9 November (3.16x slower) earned a **promote** today,
+  because the gap was only 1.78x. The default policy only fails latency at 2x the baseline; between 1.3x and 2x it raises a warning,
+  and warnings alone do not stop a promote. So the Auditor promoted a candidate that was 78% slower, with two warnings
+  (latency, and an evals difference that was not significant) in the report. That is the policy working as written, and also a sharp
+  edge. `bench/verdicts.py` now judges every check a second time with warnings set to block, using the same runs, and
+  prints both verdicts side by side.
+- **The strict setting is blunt.** The drift check also warns when a candidate is *faster*, so a strict policy can hold an improvement.
+  A warning that knows which direction is bad is on the roadmap.
+- **Speed moved between days.** The same pair of models gave 1.7 s vs 4.4 s on 9 November and 2.6 s vs 4.7 s on 11 November, which is why
+  24 runs per side is a thin basis for a hard line.
 
 ## 5. What it caught that I would have missed
 - **Slow-but-correct answers were being counted as failures.** Reading the answers alone, many looked fine. The latency
@@ -100,9 +121,9 @@ Still missing: a **rollback** and a **promote** result. I did not get either one
 - **The Fixes page had nothing it could apply.** For 37 failed runs it proposed three items (investigate slow run, handle
   model rate limits, investigate tool error), all marked *manual*, because each "needs a code or infrastructure change,
   not a setting". That is by design, but it means the tool could not fix this agent on its own.
-- **Only one real canary verdict, and it was a hold** (section 4). I have no real rollback or promote, so I cannot say how
-  the tool behaves when a candidate is truly bad. In a test with fake model servers, a candidate that errored on every call
-  was rolled back and an identical one was promoted, but that is a simulation.
+- **The only real rollback used a planted fault** (section 4). I have not seen a real model break on its own in a canary, and I
+  chose the thresholds myself, so how they behave on other agents is untested. In a test with fake model servers, an identical
+  candidate was promoted, which matches the real promote above.
 - **The canary cannot see wrong-but-well-formed answers.** In that same test, a candidate that answered "I am not sure" to
   everything was promoted, because the built-in checks look at errors and speed, not correctness.
 - **Benchmark scores are shaky at this size.** The Benchmark page ranked `nvidia/nemotron-3.5-lightning:free` at 83% and
@@ -120,7 +141,8 @@ Still missing: a **rollback** and a **promote** result. I did not get either one
 - Agent Auditor 0.12.1, SQLite database (`agent_auditor.db`), Windows, Python 3.11 or newer.
 - Start everything with `powershell -ExecutionPolicy Bypass -File .\run-all.ps1`, put your provider keys in `.env`,
   and chat with several models in the chat app (it records each turn automatically).
-- For a canary on real models, keep that running and, in a second window, run
+- For all three verdicts on real models, keep that running and, in a second window, run `python bench/verdicts.py`
+  (about 20 minutes; the report is written to `docs/real-verdicts.md`). For a single comparison, use
   `python bench/canary.py --baseline "<provider:model>" --candidate "<provider:model>" --pause 2`.
   `python bench/canary.py --list` shows the ids. It needs two working models and takes about 10 to 15 minutes.
 - Open `http://127.0.0.1:8000/dashboard`, select `chat-agent`, then use Overview, Failures, Root causes, Regression

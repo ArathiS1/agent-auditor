@@ -19,6 +19,7 @@ a model gave a wrong but well-formed answer; compare answers with `python bench/
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import os
 import sys
 import tempfile
@@ -33,6 +34,8 @@ from envfile import load_env  # noqa: E402
 load_env(ROOT / "chatbot")
 
 from run import QUESTIONS, choose_models  # noqa: E402
+
+LAST: dict = {}  # the newest run's labels and verdict report, read by bench/verdicts.py
 
 
 def pick_model(wanted: str):
@@ -49,10 +52,10 @@ def pick_model(wanted: str):
     return provider_for(chosen["id"])
 
 
-def drive(agent, store, provider, questions: list[dict], pause: float, label: str) -> tuple[int, int]:
+def drive(agent, store, provider, questions: list[dict], pause: float, label: str, keep_going: bool = False) -> tuple[int, int]:
     ok = bad = streak = 0
     for i, q in enumerate(questions, 1):
-        if streak >= 4:
+        if streak >= 4 and not keep_going:
             print(f"  stopped: 4 errors in a row on {label}. Fix the cause (see check_keys.py) or choose another model.")
             break
         cid = store.create()
@@ -81,6 +84,9 @@ def main(argv: list[str] | None = None, transport=None) -> int:
                     help="do not ask the baseline model again: use the production runs it already has from an earlier run of this script")
     ap.add_argument("--since-hours", type=float, default=3.0, help="how far back the comparison looks (default 3)")
     ap.add_argument("--pause", type=float, default=0.0, help="seconds to wait between questions (helps with rate limits)")
+    ap.add_argument("--break-candidate", action="store_true",
+                    help="plant a fault: the candidate is the same model reached through a wrong address, so every call fails "
+                         "(a stand-in for a bad config push). Use it to see a rollback.")
     ap.add_argument("--list", action="store_true", help="show the models that have a key, then stop")
     ap.add_argument("--auditor", default=os.environ.get("AUDITOR_URL", "http://127.0.0.1:8000"))
     ap.add_argument("--key", default=os.environ.get("AUDITOR_API_KEY", ""))
@@ -107,7 +113,9 @@ def main(argv: list[str] | None = None, transport=None) -> int:
         if p is None:
             print(f"The {name} model was not found or has no key. See the ids with: python bench/canary.py --list")
             return 2
-    if f"{base_p.name}:{base_p.model}" == f"{cand_p.name}:{cand_p.model}":
+    if args.break_candidate:
+        cand_p = dataclasses.replace(cand_p, name=cand_p.name + "-misconfigured", base_url="http://127.0.0.1:9/v1")
+    elif f"{base_p.name}:{base_p.model}" == f"{cand_p.name}:{cand_p.model}":
         print("Baseline and candidate are the same model; the comparison would mean nothing. Choose two different models.")
         return 2
 
@@ -146,7 +154,7 @@ def main(argv: list[str] | None = None, transport=None) -> int:
         print("Baseline answers:")
         b_ok, b_bad = drive(base_agent, store, base_p, questions, args.pause, base_p.model)
     print("\nCandidate answers:")
-    c_ok, c_bad = drive(cand_agent, store, cand_p, questions, args.pause, cand_p.model)
+    c_ok, c_bad = drive(cand_agent, store, cand_p, questions, args.pause, cand_p.model, keep_going=args.break_candidate)
     base_aud.flush(timeout=30)
     cand_aud.flush(timeout=30)
     print(f"\nBaseline: {b_ok} answered, {b_bad} errored. Candidate: {c_ok} answered, {c_bad} errored.")
@@ -160,6 +168,10 @@ def main(argv: list[str] | None = None, transport=None) -> int:
         baseline_environment="production", candidate_environment="canary", since_hours=args.since_hours,
         policy={"min_canary_runs": args.runs, "min_baseline_runs": args.runs},
     )
+    LAST.clear()
+    LAST.update(report=report, baseline=base_label, candidate=cand_label, agent=args.agent, runs=args.runs,
+                since_hours=args.since_hours, base_model=f"{base_p.name}:{base_p.model}", cand_model=f"{cand_p.name}:{cand_p.model}",
+                planted_fault=bool(args.break_candidate), answered=(b_ok, b_bad, c_ok, c_bad))
     print(f"\nVERDICT: {str(report.get('verdict', '?')).upper()}")
     for reason in report.get("reasons", []):
         print(f"  - {reason}")

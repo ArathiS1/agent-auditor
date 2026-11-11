@@ -141,8 +141,8 @@
 
 <section class="sec" id="verdict"><div class="wrap verdict">
   <div>
-    <h2>It held back a slower model, with the numbers to say why.</h2>
-    <p class="lede" style="margin-bottom:0">Two real models answered the same 24 questions. Neither failed. The candidate was just slower, and the canary said so instead of guessing.</p>
+    <h2>It held back a slower model, then promoted it two days later.</h2>
+    <p class="lede" style="margin-bottom:0">Two real models answered the same 24 questions. Neither failed. The candidate was just slower, and the canary said so. The same pair later gave a smaller gap and a different verdict, which is the most useful thing I learned.</p>
     <div class="cmp" role="group" aria-label="Answer time, baseline against candidate">
       <h3>Median answer time</h3>
       <div class="line"><span class="lbl">deepseek-v4-flash</span><span class="track"><span class="fill a" style="width:18.9%"></span></span><span class="n">1.7 s</span></div>
@@ -151,7 +151,7 @@
       <div class="line"><span class="lbl">deepseek-v4-flash</span><span class="track"><span class="fill a" style="width:32.2%"></span></span><span class="n">2.9 s</span></div>
       <div class="line"><span class="lbl">gpt-5-nano</span><span class="track"><span class="fill b" style="width:100%"></span></span><span class="n">9.0 s</span></div>
     </div>
-    <p class="note">Hold, not rollback, because the rollback line is 4x slower and this was 3.16x. I have not yet seen a real rollback or promote on real models. <a href="docs/case-study.html#4-a-change-gated-by-a-canary">Read the full run</a>, including what did not work.</p>
+    <p class="note">That was on 9 November, 3.16x slower. Two days later the same pair gave 1.78x and the default policy <em>promoted</em> it, with warnings. I have since run a rollback (with a planted fault) and a promote on real models too. <a href="docs/case-study.html#4-a-change-gated-by-a-canary">Read all three runs</a>, including what did not work.</p>
   </div>
   <div class="console" role="img" aria-label="Canary report. Evals pass, latency fail at 3.16 times the baseline, causes pass, drift warning, replay skipped, change pass. Verdict: hold.">
     <div class="h">canary: 24 runs each, same questions</div>

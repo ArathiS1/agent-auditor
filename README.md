@@ -153,6 +153,8 @@ On the included sample run:
 - Half-missing search results were caught 3 times in 5.
 - **Out-of-date facts were never caught.** The built-in checks look at symptoms, not facts.
 
+On real models the canary has produced a hold, a promote and a rollback (the rollback used a planted fault). The same pair of models earned a hold one day and a promote two days later, because the default policy only fails latency at 2x. See the [case study](docs/case-study.md#4-a-change-gated-by-a-canary).
+
 Run it yourself: `python validation/run_validation.py --dry-run`. Report and method: [validation/README.md](validation/README.md).
 
 ## Design choices

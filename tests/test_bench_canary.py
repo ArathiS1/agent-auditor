@@ -31,3 +31,21 @@ def test_refuses_unknown_or_identical_models(capsys, monkeypatch):
 def test_list_shows_models_with_a_key(capsys, monkeypatch):
     monkeypatch.setattr(C, "choose_models", lambda w: [{"id": "gemini:gemini-2.5-flash"}])
     assert C.main(["--list"]) == 0 and "gemini:gemini-2.5-flash" in capsys.readouterr().out
+
+
+def test_break_candidate_allows_the_same_model(capsys, monkeypatch):
+    """The planted-fault option compares a model with itself, so the 'same model' refusal must not fire."""
+    from providers import Provider
+
+    monkeypatch.setattr(C, "pick_model", lambda w: Provider("gemini", "openai", "http://x/v1", "GEMINI_API_KEY", "m"))
+    args = ["--baseline", "x", "--candidate", "x", "--key", "k", "--auditor", "http://127.0.0.1:9"]
+    assert C.main(args) == 2 and "same model" in capsys.readouterr().out
+    assert C.main(args + ["--break-candidate"]) == 2
+    assert "same model" not in capsys.readouterr().out
+
+
+def test_verdicts_needs_the_auditor_key(capsys, monkeypatch):
+    import verdicts as V
+
+    monkeypatch.delenv("AUDITOR_API_KEY", raising=False)
+    assert V.main([]) == 2 and "AUDITOR_API_KEY" in capsys.readouterr().out
