@@ -221,6 +221,10 @@ _OUTPUT_KEYS = ("output.value", "langfuse.observation.output", "langfuse.trace.o
 
 def _io(attrs: dict[str, Any], which: str) -> Any:
     keys = _INPUT_KEYS if which == "input" else _OUTPUT_KEYS
+    # Chat messages are cleaner than the raw request or response JSON that instrumentors also put in input.value / output.value.
+    structured = _message_rows(attrs, "llm.input_messages") if which == "input" else _message_rows(attrs, "llm.output_messages")
+    if structured:
+        return structured
     for k in keys:
         if attrs.get(k) not in (None, ""):
             return _json_or_text(attrs[k])
@@ -350,10 +354,42 @@ def map_environment(value: Any) -> str:
     return "production"
 
 
+_LC_ROLES = {"human": "user", "user": "user", "ai": "assistant", "assistant": "assistant", "system": "system", "tool": "tool"}
+
+
+def _chat_messages(items: list[Any]) -> list[dict[str, Any]]:
+    """Plain {role, content} messages from OpenAI-style or LangChain-serialised ones."""
+    out = []
+    for m in items:
+        if not isinstance(m, dict):
+            continue
+        data = m.get("data") if isinstance(m.get("data"), dict) else m
+        raw = str(m.get("role") or m.get("type") or data.get("type") or "").lower()
+        content = data.get("content")
+        if raw in _LC_ROLES and content not in (None, "", []):
+            out.append({"role": _LC_ROLES[raw], "content": content})
+    return out
+
+
+_QUESTION_KEYS = ("task", "question", "query", "input", "prompt", "message", "text", "user_input")
+_ANSWER_KEYS = ("output", "answer", "result", "response", "text", "content")
+
+
 def _text_of(value: Any, role: str) -> Any:
     """Prefer plain text for a run's question or answer, so scorers can read it."""
     if isinstance(value, list):
         return message_text(value, role) or value
+    if isinstance(value, dict) and isinstance(value.get("messages"), list):
+        # A graph's state, e.g. LangGraph's {"messages": [...]}, where messages may be in LangChain's {"type": "ai", "data": {...}} form.
+        text = message_text(_chat_messages(value["messages"]), role)
+        if text:
+            return text
+    if isinstance(value, dict):
+        # Agent frameworks record the call's arguments, e.g. {"task": "...", "stream": false}: take the one field that is the question.
+        keys = _QUESTION_KEYS if role == "user" else _ANSWER_KEYS
+        for k in keys:
+            if isinstance(value.get(k), str) and value[k].strip():
+                return value[k][:MAX_TEXT]
     return value
 
 
@@ -402,6 +438,16 @@ def _one_run(agent: str, trace_id: str, spans: list[Span], environment: str | No
         draft.tags["root"] = root.name
         if res.get("service.name"):
             draft.tags["service"] = str(res["service.name"])
+    if root is not None and not any(s.parent_id == root.span_id for s in spans):
+        # The root is the only span (a bare model or tool call): it is also the run's one step, so its timing and model count.
+        kind = classify(root.attrs)
+        if kind != "other":
+            a = _step_attributes(root, kind)
+            docs = a.pop("_documents", None)
+            out = docs if docs is not None else _io(root.attrs, "output")
+            draft.steps.append(StepDraft(root.span_id, kind, root.name, _io(root.attrs, "input"), out, "error" if root.error else "ok",
+                                         root.error_text, _when(root.start), _when(root.end), a))
+            steps = draft.steps
     fill_from_steps(draft)
     models = [s.attributes["model"] for s in steps if "model" in s.attributes]
     if models:
