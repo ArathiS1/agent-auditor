@@ -237,7 +237,7 @@ Many failures, such as slow runs and rate limits, come from the model or provide
 
 | | |
 |---|---|
-| [docs/reference.md](docs/reference.md) | Every phase in detail: evals, drift, failure-to-test, root causes, canary, releases, attribution |
+| [docs/reference.md](docs/reference.md) | Every phase in detail: evals, drift, failure-to-test, root causes, canary, releases, attribution. See the Troubleshooting section for port conflicts. |
 | [docs/architecture.md](docs/architecture.md) | How the pieces fit |
 | [docs/deployment.md](docs/deployment.md) | Docker, PostgreSQL, secrets |
 | [docs/importing-traces.md](docs/importing-traces.md) | Send OpenTelemetry traces to the Auditor: how spans map to runs, and the limits |
@@ -254,7 +254,7 @@ Many failures, such as slow runs and rate limits, come from the model or provide
 - The OpenTelemetry import maps spans by convention (OpenInference, OTel GenAI, OpenLLMetry, Langfuse) and has been tested
   with the Python SDK and hand-written traces only. gRPC export is not supported. See [docs/importing-traces.md](docs/importing-traces.md).
 - Approver names are self-asserted behind one shared API key. Promotion marks a version active; it deploys nothing.
-- Replay needs an agent that can be called again with the stored inputs. Agents that depend on live sessions or
+- Replay needs an agent that can be called again with the stored inputs. Agents that depend in live sessions or
   external state cannot be replayed faithfully.
 - The AI helper can be wrong, so decisions stay with a person. With a provider configured, dashboard figures and your
   question are sent to that provider.
