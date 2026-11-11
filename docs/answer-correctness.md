@@ -32,7 +32,8 @@ limits). The scorer is `expectations_met`. `bench/canary.py` does this for its 1
 ## 2. `gives_an_answer`: non-answers, with no labels
 
 On by default. For a short answer (30 words or fewer, a setting) it flags "I am not sure", "I don't know", "I can't help with
-that", "as an AI" and similar. Longer answers pass, because a long answer with one hedge is usually still an answer. Runs that
+that", "as an AI" and similar, and the common Spanish and French equivalents ("no estoy seguro", "no lo sé", "no puedo
+ayudar", "je ne sais pas", "je ne peux pas vous aider", "désolé, mais"). Longer answers pass, because a long answer with one hedge is usually still an answer. Runs that
 carry `tags.expect` are skipped, because `expectations_met` knows the right answer.
 
 What to expect from it:
