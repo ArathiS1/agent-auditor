@@ -4,6 +4,11 @@ If your agent already emits OpenTelemetry traces, you do not need to change its 
 at the Auditor. Each trace becomes one run, its model, tool and retrieval spans become steps, and everything after that (evals,
 root causes, regression tests, canary, releases) works on it.
 
+
+## File import
+
+`agent-auditor import-otlp FILE` accepts plain JSON, JSON lines, and gzip-compressed versions of both (files ending in `.gz`).
+
 ## Quick start
 
 ```bash
