@@ -3,23 +3,30 @@
 <p align="center"><b>Find out why your AI agent fails, and prove the fix works before you ship it.</b></p>
 
 <p align="center">
+  <a href="https://pypi.org/project/agent-auditor/"><img alt="PyPI" src="https://img.shields.io/pypi/v/agent-auditor"></a>
   <img alt="status" src="https://img.shields.io/badge/status-alpha-orange">
   <img alt="python" src="https://img.shields.io/badge/python-3.11%2B-blue">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-green">
-  <img alt="tests" src="https://img.shields.io/badge/tests-418%20passing-brightgreen">
-  <img alt="no api key needed" src="https://img.shields.io/badge/core-no%20API%20key%20needed-lightgrey">
+  <img alt="tests" src="https://img.shields.io/badge/tests-426%20passing-brightgreen">
+  <img alt="core runs offline" src="https://img.shields.io/badge/core-runs%20offline-lightgrey">
+</p>
+
+<p align="center">
+  <a href="https://arathis1.github.io/agent-auditor/demo/"><b>Live demo</b></a> &middot;
+  <a href="https://arathis1.github.io/agent-auditor/">Website</a> &middot;
+  <a href="https://arathis1.github.io/agent-auditor/docs/">Docs</a> &middot;
+  <a href="https://arathis1.github.io/agent-auditor/docs/case-study.html">Case study</a>
 </p>
 
 Agent Auditor is an open-source reliability layer for AI agents. It records every agent run, scores it, explains why
 failures happen, turns real failures into regression tests, and only lets a new version go live after a canary check
 and a human approval. Everything lands in an audit log.
 
-> **Status: alpha (0.12).** All planned phases are written and tested: tracing, evals, drift, failure-to-test, root
+> **Status: alpha.** All planned phases are written and tested: tracing, evals, drift, failure-to-test, root
 > causes, canary, release gate, change attribution and verified fixes, plus a plain-language dashboard and a working
 > demo agent. It has been used on one developer's machine, not in production. See [Known limitations](#known-limitations).
 
-<!-- Add your demo here: record 60-90 s of the dashboard (failed run -> root cause -> regression test -> canary -> release)
-     and save it as docs/assets/demo.gif, then replace this comment with: ![Demo](docs/assets/demo.gif) -->
+<p align="center"><img src="docs/assets/demo.gif" alt="A tour of the dashboard: Overview, Failures, Regression tests, Audit log" width="860"></p>
 
 ## Why this exists
 
@@ -56,22 +63,26 @@ flowchart LR
     B --> K[Dashboard<br/>15 pages]
 ```
 
-## Try it in 5 minutes
+## Try it in two minutes
 
-Needs Python 3.11 or newer. The core runs offline with no API key. Keys are only needed for the optional chat demo and AI helper.
+Needs Python 3.11 or newer. No API key is needed for the core.
+
+```bash
+pip install agent-auditor
+agent-auditor demo
+```
+
+`agent-auditor demo` starts the dashboard with made-up sample data (a support bot with a bad afternoon, a good
+candidate and a bad one) and opens it in your browser. Nothing is saved. Prefer to look first? Open the
+[hosted live demo](https://arathis1.github.io/agent-auditor/demo/).
+
+To run it for real with your own database, use `agent-auditor serve`. To work on the code, install from source:
 
 ```bash
 git clone https://github.com/ArathiS1/agent-auditor
 cd agent-auditor
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-uvicorn agent_auditor.api.main:app                      # API and dashboard on http://127.0.0.1:8000
-```
-
-In a second terminal, fill it with demo data and open `http://127.0.0.1:8000/dashboard`:
-
-```bash
-python examples/release_demo.py
 ```
 
 **Windows, one command:** `powershell -ExecutionPolicy Bypass -File .\run-all.ps1` starts the Auditor and the chat app
@@ -182,14 +193,14 @@ What the loop looks like on a real incident (numbers are illustrative):
 
 ## Roadmap
 
-Planned, in rough order. None of it exists yet.
+Planned, in rough order. Only the last item is done.
 
 - [ ] One-click "apply and verify" for fix candidates (register, replay and canary in one step)
 - [ ] Real user authentication, so approvers are verified and not typed names
 - [ ] Row locking for several operators on one release
 - [ ] Fact-checking scorers that compare answers with source documents, not just symptoms
 - [ ] A green PostgreSQL CI job, then promote PostgreSQL to supported
-- [ ] Published package on PyPI
+- [x] Published package on PyPI (`pip install agent-auditor`)
 
 ## FAQ
 
@@ -212,6 +223,7 @@ Many failures, such as slow runs and rate limits, come from the model or provide
 | [docs/reference.md](docs/reference.md) | Every phase in detail: evals, drift, failure-to-test, root causes, canary, releases, attribution |
 | [docs/architecture.md](docs/architecture.md) | How the pieces fit |
 | [docs/deployment.md](docs/deployment.md) | Docker, PostgreSQL, secrets |
+| [docs/publishing.md](docs/publishing.md) | How a release reaches PyPI |
 | [docs/case-study.md](docs/case-study.md) | A worked example: Agent Auditor watching its own chat agent, including what did not work |
 
 ## Known limitations

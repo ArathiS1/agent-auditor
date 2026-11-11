@@ -218,15 +218,12 @@
   <div>
     <h2>Run it in two minutes.</h2>
     <p class="lede">Needs Python 3.11 or newer. The core runs offline with no API key. <a href="demo/">Or click through the live demo first.</a></p>
-    <div class="code"><button type="button">Copy</button><pre>git clone https://github.com/ArathiS1/agent-auditor
-cd agent-auditor
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e .
+    <div class="code"><button type="button">Copy</button><pre>pip install agent-auditor
 agent-auditor demo
 # opens the dashboard with sample data; nothing is saved</pre></div>
   </div>
   <ul>
+    <li><strong>From source:</strong> <code>git clone</code> the repository, then <code>pip install -e .</code></li>
     <li><strong>On Windows,</strong> one command starts the Auditor and the chat demo together: <code>powershell -ExecutionPolicy Bypass -File .\run-all.ps1</code></li>
     <li><strong>Keys are optional.</strong> They are only used by the demo chat app, the AI helper and AI-written fixes.</li>
     <li><strong>With your own agent,</strong> add the SDK decorators to any Python agent. LangGraph is supported.</li>
@@ -269,7 +266,7 @@ agent-auditor demo
   <a href="docs/case-study.html">Case study</a>
   <a href="https://github.com/ArathiS1/agent-auditor">Source on GitHub</a>
   <a href="https://github.com/ArathiS1/agent-auditor/blob/main/CONTRIBUTING.md">Contribute</a>
-  <span class="r">Alpha, 0.12</span>
+  <span class="r">Alpha</span>
 </div></footer>
 <script src="site.js"></script>
 </body>

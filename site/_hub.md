@@ -7,17 +7,13 @@ Agent Auditor is an alpha open-source reliability layer for AI agents. This page
 You need Python 3.11 or newer. The core needs no API key.
 
 ```
-git clone https://github.com/ArathiS1/agent-auditor
-cd agent-auditor
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -e .
+pip install agent-auditor
 agent-auditor demo
 ```
 
 `agent-auditor demo` starts the dashboard with made-up sample data (a support bot with a bad afternoon, a good candidate and a bad one) and opens it in your browser. Nothing is saved. You can also [click through a hosted copy](../demo/).
 
-To run it for real with your own database, use `agent-auditor serve`.
+To run it for real with your own database, use `agent-auditor serve`. To work on the code, clone the repository and run `pip install -e ".[dev]"`.
 
 On Windows, `powershell -ExecutionPolicy Bypass -File .\run-all.ps1` starts the Auditor and the chat app together. Add `-Check` to run a 23-point self-check.
 
