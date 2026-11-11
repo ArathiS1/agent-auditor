@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Architecture | Agent Auditor</title>
+<meta name="description" content="Agent Auditor is a closed loop: observe agent runs, turn failures into tests, explain them, and gate every change with evidence.">
+<meta name="theme-color" content="#13211c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23c4350a'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar"><div class="wrap">
+  <a class="brand" href="../index.html"><span class="dot"></span>Agent Auditor</a>
+  <nav aria-label="Main">
+    <a href="../index.html#loop">How it works</a>
+    <a href="../index.html#verdict">Real result</a>
+    <a href="index.html" aria-current="page">Docs</a>
+    <a class="gh" href="https://github.com/ArathiS1/agent-auditor">GitHub</a>
+  </nav>
+</div></header>
+<div class="wrap docs">
+  <aside class="side" aria-label="Documentation">
+    <h4>Documentation</h4>
+    <a href="index.html">Overview</a>
+    <a href="reference.html">Reference</a>
+    <a href="architecture.html" aria-current="page">Architecture</a>
+    <a href="deployment.html">Deployment</a>
+    <a href="case-study.html">Case study</a>
+    <a class="ext" href="https://github.com/ArathiS1/agent-auditor">Source on GitHub</a>
+  </aside>
+  <main class="art" id="main">
+<h1 id="architecture">Architecture</h1>
+<p>Agent Auditor is a closed loop: observe agent runs, turn failures into tests, explain them, and gate every change
+with evidence.</p>
+<a href="https://github.com/ArathiS1/agent-auditor/blob/main/assets/architecture.svg"><img class="diagram" src="../assets/architecture.svg" alt="Flow diagram of the architecture described below"></a>
+<h2 id="pieces">Pieces</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Job</th>
+<th>Pure core (no database)</th>
+<th>Phase</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>api/</code>, <code>models.py</code></td>
+<td>Ingestion, versions, audit events</td>
+<td>-</td>
+<td>1</td>
+</tr>
+<tr>
+<td><code>sdk/</code></td>
+<td>Tracing, replay, canary router, client calls</td>
+<td><code>serialize</code>, <code>_mapper</code></td>
+<td>2</td>
+</tr>
+<tr>
+<td><code>evals/</code></td>
+<td>Scorers, pass-rate comparison between versions</td>
+<td><code>scorers</code>, <code>compare</code>, <code>stats</code></td>
+<td>3</td>
+</tr>
+<tr>
+<td><code>drift/</code></td>
+<td>Is the current window different from the reference?</td>
+<td><code>detect</code>, <code>stats</code></td>
+<td>4</td>
+</tr>
+<tr>
+<td><code>regress/</code></td>
+<td>Failures become de-duplicated regression cases, replay verdicts</td>
+<td><code>fingerprint</code>, <code>expectations</code></td>
+<td>5</td>
+</tr>
+<tr>
+<td><code>rootcause/</code></td>
+<td>Why did this run fail?</td>
+<td><code>classify</code>, <code>summary</code>, <code>errors</code></td>
+<td>6</td>
+</tr>
+<tr>
+<td><code>canary/</code></td>
+<td>Candidate vs baseline: five checks, one verdict</td>
+<td><code>checks</code>, <code>decide</code></td>
+<td>7</td>
+</tr>
+<tr>
+<td><code>release/</code></td>
+<td>Gate, approvals, promotion, rollback</td>
+<td><code>gate</code></td>
+<td>8</td>
+</tr>
+<tr>
+<td><code>worker.py</code></td>
+<td>Scores and diagnoses new runs outside requests</td>
+<td><code>run_once</code></td>
+<td>9</td>
+</tr>
+</tbody>
+</table></div>
+<p>Every package keeps its statistics and decision rules in plain functions that take plain data. That is why most of
+the logic can be tested without a database, and why a number in a report can be traced to one small function.</p>
+<h2 id="data-flow">Data flow</h2>
+<ol>
+<li>The SDK sends each run (input, output, ordered steps, version label, environment) to <code>POST /v1/runs</code>.
+   It never raises into your agent; a background thread with a bounded queue does the sending.</li>
+<li>The worker (or an explicit API call) writes <code>EvalResult</code> rows and <code>RunDiagnosis</code> rows. Everything later reads
+   those rows instead of re-reading steps.</li>
+<li>Failed runs become <code>RegressionCase</code> rows (one per fingerprint). Replaying the suite against a candidate version
+   produces a <code>ReplayRun</code> with per-case outcomes.</li>
+<li>A canary evaluation compares the candidate's <code>canary</code> runs with the baseline's <code>production</code> runs and stores a
+   <code>CanaryReport</code>.</li>
+<li>A <code>Release</code> asks to make the candidate active. The gate reads the newest canary report, the newest replay and the
+   approvals; promotion flips <code>AgentVersion.is_active</code>; rollback flips it back.</li>
+<li>Every state change writes an <code>AuditEvent</code>, including refusals.</li>
+</ol>
+<h2 id="design-decisions-worth-knowing">Design decisions worth knowing</h2>
+<ul>
+<li><strong>Statistics are conservative and explicit.</strong> Fisher exact tests, Bonferroni correction across the scorers or
+  causes tested, effect-size thresholds on top of p-values, and "insufficient data" as a first-class answer.</li>
+<li><strong>Rules before models.</strong> Root-cause classification is a deterministic rule set with stated precedence, so a
+  diagnosis can be explained and a wrong one can be fixed by editing a rule.</li>
+<li><strong><code>strength</code> is not a probability.</strong> It says how much evidence a rule had, not how often it is right.</li>
+<li><strong>The database is the integration point.</strong> No message broker. The worker polls; Postgres is the only service
+  besides the API.</li>
+<li><strong>Promotion is a record, not a deployment.</strong> The platform marks which version is active; your service reads it.</li>
+</ul>
+<h2 id="what-is-deliberately-not-here">What is deliberately not here</h2>
+<p>User authentication and authorization (one shared API key), multi-tenant isolation, a streaming ingestion path,
+LLM-as-judge scorers, and automatic rollback. Each is a reasonable next step, and none is claimed.</p>
+  </main>
+</div>
+<script src="../site.js"></script>
+</body>
+</html>

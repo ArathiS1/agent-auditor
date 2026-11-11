@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agent Auditor: full reference | Agent Auditor</title>
+<meta name="description" content="The front page is the README. This file keeps every phase&#x27;s detail.">
+<meta name="theme-color" content="#13211c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23c4350a'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar"><div class="wrap">
+  <a class="brand" href="../index.html"><span class="dot"></span>Agent Auditor</a>
+  <nav aria-label="Main">
+    <a href="../index.html#loop">How it works</a>
+    <a href="../index.html#verdict">Real result</a>
+    <a href="index.html" aria-current="page">Docs</a>
+    <a class="gh" href="https://github.com/ArathiS1/agent-auditor">GitHub</a>
+  </nav>
+</div></header>
+<div class="wrap docs">
+  <aside class="side" aria-label="Documentation">
+    <h4>Documentation</h4>
+    <a href="index.html">Overview</a>
+    <a href="reference.html" aria-current="page">Reference</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="deployment.html">Deployment</a>
+    <a href="case-study.html">Case study</a>
+    <a class="ext" href="https://github.com/ArathiS1/agent-auditor">Source on GitHub</a>
+  </aside>
+  <main class="art" id="main">
+<h1 id="agent-auditor-full-reference">Agent Auditor: full reference</h1>
+<p>The front page is the <a href="https://github.com/ArathiS1/agent-auditor/blob/main/README.md">README</a>. This file keeps every phase's detail.</p>
+<p>An open-source reliability layer for AI agents. It observes agent runs, turns production failures
+into regression tests, diagnoses root causes, and gates changes with verified canaries, with audit
+trails and rollback.</p>
+<h2 id="status-all-9-phases-written-plus-phase-10-friendlier-dashboard-ai-helper-and-phase-11-change-attribution-verified-fixes">Status: all 9 phases written, plus Phase 10 (friendlier dashboard, AI helper) and Phase 11 (change attribution, verified fixes)</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Scope</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Data model, FastAPI ingestion, versioned prompts/configs, audit events</td>
+<td>done</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Python SDK (plain Python + LangGraph/LangChain adapter)</td>
+<td>done</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Eval engine + version-to-version regression tracking</td>
+<td>done</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Drift detection</td>
+<td>done</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Failure-to-test conversion + replay</td>
+<td>done</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Root-cause classification</td>
+<td>done</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Canary comparison (reuses Phases 3-6)</td>
+<td>done</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Approval gates + rollback</td>
+<td>done</td>
+</tr>
+<tr>
+<td>9a</td>
+<td>Docker Compose + Postgres, Alembic, CI, background worker, architecture and deployment docs</td>
+<td>done</td>
+</tr>
+<tr>
+<td>9b</td>
+<td>Dashboard at <code>/dashboard</code>, Swagger Authorize button, final docs, case-study template</td>
+<td>done</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Plain-language dashboard (health banner, release buttons), AI helper, suggested fixes</td>
+<td>written; needs first run on your machine</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Change attribution (prompt / model / retrieval setting / source data), suspect documents, fixes proven against the regression suite</td>
+<td>written; logic tested, server parts need <code>pytest</code> on your machine</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="install-and-test">Install and test</h2>
+<pre><code class="language-bash">python -m venv .venv          # then activate it
+pip install -e &quot;.[dev]&quot;
+pytest
+uvicorn agent_auditor.api.main:app --reload     # http://127.0.0.1:8000  (redirects to /docs)
+</code></pre>
+<p>LangGraph support is optional: <code>pip install -e ".[dev,langgraph]"</code>.</p>
+<p><strong>Docker (API + worker + PostgreSQL):</strong> <code>cp .env.example .env</code>, set the two secrets, <code>docker compose up --build</code>.
+See <a href="deployment.html">docs/deployment.md</a> and <a href="architecture.html">docs/architecture.md</a>.</p>
+<h2 id="dashboard">Dashboard</h2>
+<p>Open <code>http://127.0.0.1:8000/dashboard</code> (<code>run-all.ps1</code> opens it already signed in via <code>#key=</code>; the key is kept for that tab
+only and removed from the address bar). It is plain HTML, CSS and JS served by the API: no build step, no CDN.
+Fifteen pages, grouped by what you are trying to do:</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Pages</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Watch</td>
+<td><strong>Overview</strong> (health verdict, "the tape": one tick per run, orange = failed, dashed line = new version), <strong>Failures</strong> (every failed or badly answered run with its cause and what to change), <strong>Runs</strong></td>
+</tr>
+<tr>
+<td>Understand</td>
+<td><strong>Quality</strong>, <strong>Root causes</strong>, <strong>Drift</strong></td>
+</tr>
+<tr>
+<td>Improve</td>
+<td><strong>Versions</strong> (register, compare, prompt diff), <strong>Regression tests</strong>, <strong>Fixes</strong>, <strong>Benchmark</strong> (models ranked on the same questions), <strong>Gap analysis</strong> (your chat against ChatGPT, Claude, Gemini, Perplexity, Copilot, Blackbox)</td>
+</tr>
+<tr>
+<td>Ship safely</td>
+<td><strong>Canary</strong>, <strong>Releases</strong> (propose, approve, promote, roll back)</td>
+</tr>
+<tr>
+<td>Govern</td>
+<td><strong>Audit log</strong>, <strong>Setup</strong> (connection checks, key, demo data)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Click any run for a drawer with its steps, checks, diagnosis, and buttons to make a regression test. Every chart has a
+table view; dark mode follows your system or the Dark button. "Ask for help" explains every term (and answers questions
+if <code>ANTHROPIC_API_KEY</code> is set on the server).</p>
+<p><strong>Gap analysis</strong> compares the feature list in <code>src/agent_auditor/data/feature_matrix.json</code> with what the chat app
+reports it can do. That matrix is kept by hand (as of 2026-06) and some cells may be out of date: check the sources it lists.
+Copilot and Blackbox have no standard public chat API, so they appear in the gap checklist only, not in the Benchmark.</p>
+<p><strong>Benchmark.</strong> <code>python bench/run.py</code> (or <code>run-all.ps1 -Bench</code>) asks every model whose key is in <code>.env</code> the same
+questions and records the runs in the <code>test</code> environment, scored by plain text checks. <code>--quick</code> runs a short set,
+<code>--models gemini,groq</code> limits it, <code>--list</code> shows what would run.</p>
+<p><strong>Acting from the page.</strong> Releases have Approve, Reject, Promote, Cancel and Roll back buttons, plus Propose a
+release. Each asks for your name (a label you type, not a verified login) and explains what it will do first. The
+server still enforces the gate, so a button can never skip a check. Promote only marks a version active; it deploys
+nothing.</p>
+<p><strong>AI helper (optional).</strong> Set <code>ANTHROPIC_API_KEY</code> where the server runs (<code>.env</code> for Docker Compose) and an
+"Ask for help" button appears. It answers questions about what the page shows, using only the numbers on the page,
+and cannot change anything. "Suggest a fix" on the failure panel drafts a prompt or settings change from the top
+failure causes; it is a draft for a person to review, and it must go through a canary. Each question sends the
+current dashboard figures and your question to the Claude API. Without a key the helper is off and everything else works.
+Model: <code>AUDITOR_ASSISTANT_MODEL</code> (default <code>claude-sonnet-5-5</code>). Questions are limited to 20 per minute per server. To see it populated, run <code>python examples/release_demo.py</code>
+against a running server. In Swagger (<code>/docs</code>) use the <strong>Authorize</strong> button once to set the key.</p>
+<h2 id="evals-phase-3">Evals (Phase 3)</h2>
+<p>Scorers look at stored runs and say pass / fail / not applicable. Built-ins need no API key:</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Scorer</th>
+<th>Passes when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run_succeeded</code></td>
+<td>the run did not end in an error</td>
+</tr>
+<tr>
+<td><code>no_step_errors</code></td>
+<td>no tool / LLM / retrieval step failed</td>
+</tr>
+<tr>
+<td><code>output_present</code></td>
+<td>the run produced a non-empty output</td>
+</tr>
+<tr>
+<td><code>retrieval_nonempty</code></td>
+<td>every retrieval step returned documents</td>
+</tr>
+<tr>
+<td><code>retrieval_top_score</code></td>
+<td>the best retrieval score is at least the threshold (default 0.5)</td>
+</tr>
+<tr>
+<td><code>latency_within_budget</code></td>
+<td>the run finished within <code>budget_ms</code> (default 10 000)</td>
+</tr>
+<tr>
+<td><code>grounded_overlap</code></td>
+<td>most of the answer's terms appear in the retrieved text (a weak heuristic)</td>
+</tr>
+</tbody>
+</table></div>
+<p>"Not applicable" (for example a retrieval scorer on a run that never retrieved) is stored but never
+counted as a pass or a failure.</p>
+<pre><code class="language-bash">python examples/eval_demo.py      # simulates v1 vs a worse v2 and prints the verdict
+</code></pre>
+<p>Or use the API (<code>/docs</code>):
+- <code>POST /v1/evals/run</code> score runs (idempotent; <code>only_unevaluated</code> skips finished work)
+- <code>GET  /v1/runs/{id}/evals</code> per-run results with reasons
+- <code>GET  /v1/agents/{name}/eval-summary</code> pass rates per version, with 95% intervals
+- <code>GET  /v1/agents/{name}/compare?baseline=v1&amp;candidate=v2</code> regression verdict
+- <code>GET  /v1/evals/scorers</code> available scorers and their parameters</p>
+<p>From the SDK: <code>auditor.run_evals()</code> and <code>auditor.compare_versions("v1", "v2")</code>.</p>
+<h3 id="how-the-verdict-works">How the verdict works</h3>
+<p>Per scorer, pass rates of the two versions are compared with Fisher's exact test (valid for small
+samples). A scorer is a <strong>regression</strong> if its pass rate dropped by at least <code>min_effect</code> (default
+5 points) and the result is significant; <strong>improvement</strong> is the mirror image; a big but
+non-significant change is <strong>inconclusive</strong> (collect more runs); fewer than <code>min_samples</code> (default
+20) runs on either side gives <strong>insufficient_data</strong>. Because several scorers are tested together,
+the significance level is split across them (Bonferroni) so you are not told about regressions
+that are just noise.</p>
+<h3 id="bring-your-own-judge">Bring your own judge</h3>
+<pre><code class="language-python">from agent_auditor.evals import make_judge_scorer, register_scorer
+register_scorer(make_judge_scorer(&quot;helpfulness&quot;, my_llm_judge, threshold=0.7))
+</code></pre>
+<p>Judges are opt-in (<code>"scorers": ["helpfulness"]</code>). Note: a scorer registered in your own Python
+process is only available to a server running in that same process; registering judges from a
+separate client over HTTP is planned with the dashboard phase.</p>
+<h2 id="drift-detection-phase-4">Drift detection (Phase 4)</h2>
+<p>Compares a <strong>reference window</strong> (default: the previous 7 days) with a <strong>current window</strong> (default: the
+last 24 h) of production runs and reports which behaviours moved.</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Signal family</th>
+<th>Signals</th>
+<th>Test</th>
+<th>Severity from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>numeric</td>
+<td>latency, input/output chars, step count, retrieval top score, retrieved doc count</td>
+<td>KS two-sample</td>
+<td>KS D</td>
+</tr>
+<tr>
+<td>rate</td>
+<td>run error, step error, empty retrieval, eval pass rates</td>
+<td>Fisher exact</td>
+<td>absolute change</td>
+</tr>
+<tr>
+<td>term mix</td>
+<td>input terms, tool calls</td>
+<td>permutation test on Jensen-Shannon divergence</td>
+<td>JS distance</td>
+</tr>
+</tbody>
+</table></div>
+<p>Alpha (default 0.01) is Bonferroni-split across testable signals. Severity depends on effect size, not
+just p-values, so a tiny but "significant" shift stays low. Thresholds are heuristics (<code>Thresholds</code>).</p>
+<pre><code>POST /v1/drift/check              GET /v1/agents/{name}/drift      GET /v1/drift/reports/{id}
+auditor.check_drift(...)          # SDK
+python examples/drift_demo.py     # server running; seeds 280 baseline + 60 drifted runs
+</code></pre>
+<p>Power: with 280 reference vs 60 current runs, a 0.8 sd shift is caught ~92% of the time and 1 sd or
+more ~100%; subtle shifts (+10% latency) are caught only sometimes. Validation on synthetic data:
+0/80 false alarms on null windows.</p>
+<h2 id="failure-to-test-conversion-phase-5">Failure-to-test conversion (Phase 5)</h2>
+<p>Production failures become regression tests, and any new version is replayed against them.</p>
+<ol>
+<li><strong>Generate</strong>: <code>auditor.generate_tests()</code> scores recent runs, finds the ones that failed a scorer, and
+   stores each distinct failure as a <em>regression case</em>: the input, what the failing run answered, and
+   an expectation per failed scorer ("<code>retrieval_nonempty</code> must pass", with the same thresholds the
+   failure was judged by). Repeats are merged: identical inputs by fingerprint, near-identical inputs
+   (content-word overlap of at least <code>similarity</code>, default 0.8) when they failed the same scorers. A case
+   keeps an <code>occurrences</code> count, so you can see which failure is most common. Re-running is idempotent.</li>
+<li><strong>Review</strong>: <code>GET /v1/agents/{name}/tests</code>. Disable a noisy case with <code>PATCH /v1/tests/{id}</code>, add your own
+   checks (<code>output_contains</code>, <code>output_not_contains</code>, extra scorers), or pin one run with
+   <code>POST /v1/runs/{id}/to-test</code>. Cases are never deleted, only disabled.</li>
+<li><strong>Replay</strong>: <code>auditor.replay_tests(my_agent, version="v2")</code> calls <em>your</em> agent on every enabled case, records
+   the runs in the <code>test</code> environment under that version (so they never mix with production data), and the
+   server grades them. The verdict is <code>pass</code>, <code>fail</code> or <code>incomplete</code>; per case you get <code>pass</code>, <code>fail</code>,
+   <code>unverified</code> (e.g. the agent no longer retrieves, so the original check cannot be evaluated) or
+   <code>missing</code>. The summary lists <code>fixed</code>, <code>still_failing</code> and <code>newly_failing</code> (passed in the previous replay,
+   fails now), which is what Phase 8 will gate on.</li>
+</ol>
+<pre><code>POST /v1/agents/{name}/tests/generate     GET /v1/agents/{name}/tests     GET|PATCH /v1/tests/{id}
+POST /v1/runs/{id}/to-test                POST /v1/agents/{name}/replays  GET /v1/agents/{name}/replays
+GET  /v1/replays/{id}
+python examples/regression_demo.py        # server running; v1 fails, v2/v3/v4 are graded
+</code></pre>
+<p>Things to know:
+- The server never runs your agent. Replay happens in your process (the SDK), the server only grades.
+  Runs are matched to cases by a token the SDK adds; you can also post <code>results: [{case_id, run_id}]</code> yourself.
+- <code>grounded_overlap</code> (a heuristic) is not turned into a test unless you pass <code>include_weak=true</code>.
+- Inputs and outputs of production runs are copied into test cases. <code>redact=true</code> masks emails, phone
+  numbers, card-like numbers, SSNs and key-like strings. It is best effort and does <strong>not</strong> find names or
+  addresses; review cases before sharing a database.
+- Each case is replayed once. An agent with a nondeterministic LLM can pass or fail a case by chance, so
+  treat a single failing case in a large suite with suspicion and re-run before blocking a release.</p>
+<h2 id="root-cause-classification-phase-6">Root-cause classification (Phase 6)</h2>
+<p>"Something is failing" becomes "this cause, in this step, since this version".</p>
+<p><code>auditor.root_causes()</code> classifies every run and reports, for the failures: the cause ranking, the steps
+and sub-causes involved, example run ids, suggested first checks, and which causes cluster in one version.
+<code>auditor.diagnose_run(run_id)</code> explains a single run. Regression cases from Phase 5 now carry their cause.</p>
+<p>Causes: <code>retrieval_error</code>, <code>retrieval_empty</code>, <code>retrieval_low_relevance</code>, <code>tool_timeout</code>, <code>tool_error</code>,
+<code>llm_error</code>, <code>agent_exception</code>, <code>ungrounded_answer</code>, <code>slow_run</code>, <code>empty_output</code>, <code>unknown</code>
+(<code>GET /v1/root-causes/taxonomy</code> has the meaning and advice for each).</p>
+<p>How it decides (deterministic rules, no model call, no API key):
+1. <strong>Errors dominate.</strong> If a step raised, the <em>earliest</em> failing step is the cause (tool, LLM or retrieval),
+   refined by its error text into a sub-cause: timeout, rate_limit, context_length, auth, connection,
+   server_error, not_found, code_or_input. A run that failed with no failing step is an <code>agent_exception</code>.
+2. <strong>Otherwise, upstream quality symptoms first:</strong> empty retrieval, then weak matches, then an answer not
+   supported by the retrieved text, then slowness (blamed on the slowest step), then empty output.
+3. Everything else that fired is kept as a contributing finding, never dropped.</p>
+<p><code>strength</code> (strong / moderate / weak) says how direct the evidence is (an error message, an empty
+result = strong; a threshold = moderate; a heuristic scorer = weak). It is <strong>not a probability</strong>: on the
+synthetic benchmark it does not track accuracy closely.</p>
+<pre><code>POST /v1/agents/{name}/diagnose     POST /v1/agents/{name}/root-causes     GET /v1/runs/{id}/diagnosis
+GET  /v1/root-causes/taxonomy
+python examples/rootcause_demo.py                    # server running; v2 breaks refunds, v1 is mostly fine
+python -m agent_auditor.rootcause.benchmark          # no server needed
+</code></pre>
+<p>What has and has not been measured:
+- <strong>Error-text matching</strong> was measured on 270 realistic messages (30 for each of 9 kinds) written by a separate
+  process that never saw the matcher. First version: 74%. After one round of fixes, a second independent set of 270
+  messages, never used for tuning, scored <strong>83%</strong> (82% on messages that carry a signal). Misses are mostly
+  long-tail vendor wording; teach your own with <code>add_error_pattern("timeout", r"softtimelimitexceeded")</code>.
+  Both sets are in <code>tests/data/</code>.
+- <strong>Whole-run classification</strong> was measured on synthetic failures with a known injected cause
+  (<code>python -m agent_auditor.rootcause.benchmark</code>): about 97% overall, 100% on clear cases, about 89% on noisy
+  ones (opaque error messages, borderline scores, missing instrumentation), 0% of healthy runs flagged. The
+  generator was written alongside the classifier, so treat this as an <strong>optimistic bound</strong>, and the compound
+  tier only checks that the stated precedence policy is implemented, not that the policy is right.
+- <strong>Not measured:</strong> accuracy on real production incidents. Compare the diagnoses with failures you have
+  root-caused by hand before trusting them for decisions.
+- The version comparison finds <em>association</em> (a cause is much more common in one version), not proof: traffic
+  or data can change at the same moment as a deploy.
+- A tool timeout whose message does not say "timeout" is reported as <code>tool_error</code> (the most common mistake in
+  the benchmark). If your agent records opaque errors, the sub-cause will often be missing.</p>
+<h2 id="canary-comparison-phase-7">Canary comparison (Phase 7)</h2>
+<p>Give a candidate version a slice of live traffic, then ask: promote, hold, roll back, or keep collecting?</p>
+<pre><code class="language-python">router = auditor.canary_router(baseline=(&quot;v1&quot;, answer_v1), candidate=(&quot;v2&quot;, answer_v2), fraction=0.1)
+answer = router.call(request_id, question)        # records &quot;production&quot;/v1 or &quot;canary&quot;/v2 runs
+
+report = auditor.evaluate_canary(baseline=&quot;v1&quot;, candidate=&quot;v2&quot;, since_hours=24)
+print(report[&quot;verdict&quot;], report[&quot;reasons&quot;])
+</code></pre>
+<p><code>POST /v1/agents/{name}/canary/evaluate</code>, <code>GET /v1/agents/{name}/canary</code>, <code>GET /v1/canary/{id}</code>.
+Every evaluation is saved and written to the audit trail as <code>canary.evaluate</code>.</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Question</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>evals</td>
+<td>Did pass rates fall?</td>
+<td>Phase 3 comparison (Fisher exact, Bonferroni), alpha 0.01</td>
+</tr>
+<tr>
+<td>latency</td>
+<td>Is it slower?</td>
+<td>p50/p95 ratio plus a KS test; warn 1.3x, hold 2x, rollback 4x</td>
+</tr>
+<tr>
+<td>causes</td>
+<td>Did some failure cause become more common, or appear for the first time?</td>
+<td>Phase 6 diagnoses, Fisher per cause</td>
+</tr>
+<tr>
+<td>drift</td>
+<td>Does canary traffic or behaviour look different?</td>
+<td>Phase 4 detector; a warning only, since routing can explain it</td>
+</tr>
+<tr>
+<td>replay</td>
+<td>Does the candidate break a past failure's regression test?</td>
+<td>latest Phase 5 replay of that version</td>
+</tr>
+</tbody>
+</table></div>
+<p>Verdicts: <strong>rollback</strong> if any check fails badly (a pass-rate or cause-rate increase of at least 10 points,
+latency 4x, or 2+ regression cases newly failing); <strong>hold</strong> if a check fails less badly; <strong>continue</strong> if there are
+too few canary or baseline runs (default 30 each) or no eval comparison is possible yet; otherwise <strong>promote</strong>.
+Override any threshold with <code>policy={...}</code> (see <code>canary/checks.py: Policy</code>), for example
+<code>{"min_canary_runs": 200, "require_replay": True, "warnings_block": True}</code>.</p>
+<p><strong>What this does not give you</strong>
+- Repeated checks of one canary raise the false-alarm rate (peeking). The stricter default alpha helps; it does
+  not remove the problem. Fix the traffic share and minimum sample size in advance.
+- <code>router.choose(key)</code> is a sticky hash, not randomisation. If the key tracks user tier, region or time of day,
+  the two arms are not comparable. Use a per-request key for an unbiased split.
+- A <code>promote</code> means no check found a problem at this sample size, not that the candidate is better.
+  A <code>rollback</code> is a recommendation here; acting on it (and approvals) arrives in Phase 8.
+- Thresholds are defaults, not tuned on real traffic. The decision logic is unit-tested on constructed cases;
+  the demo is a simulation.</p>
+<p>Try it: <code>python examples/canary_demo.py</code> (server running). Expect v2 to be a rollback and v3 a promote.</p>
+<p><strong>A canary on real models (Auditor Chat).</strong> <code>python bench/canary.py --list</code> shows the models you have keys for. Then
+<code>python bench/canary.py --baseline &lt;model&gt; --candidate &lt;model&gt;</code> asks both the same 24 questions, records the baseline in
+<code>production</code> and the candidate in <code>canary</code>, scores the runs, and prints and saves the verdict (see the dashboard's Canary
+page). If either side gets fewer runs than asked, for example because a key ran out of quota, the verdict is
+"continue" and says why. It cannot see wrong-but-well-formed answers; use the Benchmark page for answer quality.</p>
+<h2 id="releases-approval-gates-and-rollback-phase-8">Releases: approval gates and rollback (Phase 8)</h2>
+<p>A release asks to make a candidate version the <em>active</em> one. The gate decides whether that may happen.</p>
+<pre><code class="language-python">rel = auditor.propose_release(&quot;v2&quot;, proposed_by=&quot;alice&quot;, policy={&quot;required_approvals&quot;: 1})
+auditor.approve_release(rel[&quot;id&quot;], approver=&quot;bob&quot;, comment=&quot;canary looks clean&quot;)
+auditor.promote_release(rel[&quot;id&quot;], actor=&quot;alice&quot;)      # HTTP 409 with the blockers if the gate says no
+auditor.rollback_release(rel[&quot;id&quot;], actor=&quot;bob&quot;, reason=&quot;timeouts doubled&quot;)
+auditor.release_audit(rel[&quot;id&quot;])                       # every step, oldest first
+</code></pre>
+<p>The gate passes only when all of these hold at the moment you promote:
+- the newest canary report for the candidate says <strong>promote</strong>, is recent (default 24 h), and compared the candidate
+  with the version that is <strong>active now</strong>;
+- optionally (<code>require_replay</code>) the newest regression replay has no newly failing case;
+- enough distinct approvers (default 1, not the proposer) whose approvals are still valid. <strong>An approval goes stale
+  when a newer canary report says anything other than promote</strong>, so a person cannot approve on evidence that has
+  since changed.</p>
+<p>States: <code>proposed -&gt; promoted -&gt; rolled_back</code>, or <code>proposed -&gt; rejected | cancelled</code>. Rollback reactivates the
+version that was active before the promotion (or <code>to_version</code>) and needs a written reason. Refused approvals and
+refused promotions are written to the audit trail too (<code>release.approval_refused</code>, <code>release.promote_refused</code>).
+Endpoints: <code>POST /v1/agents/{name}/releases</code>, <code>GET /v1/agents/{name}/releases</code>, <code>GET /v1/releases/{id}</code>,
+<code>POST /v1/releases/{id}/approve | promote | rollback | cancel</code>, <code>GET /v1/releases/{id}/audit</code>, <code>GET /v1/audit</code>.</p>
+<p><strong>What this does not do</strong>
+- <strong>It does not deploy anything.</strong> Promotion and rollback change which version is marked active. Your service has to
+  read it (<code>auditor.active_version()</code> returns the label, prompt and config) for the change to take effect.
+- <strong>Approver names are not authenticated.</strong> The API has one shared key, so "two different approvers" means two
+  different strings. The trail is a labelled record, not proof of who clicked. Put the API behind real user
+  authentication before relying on four-eyes approval.
+- Two requests racing on one release are not serialised beyond the database transaction. Fine for one operator at
+  a time; a multi-user deployment needs row locking, which is not implemented (not even on PostgreSQL).
+- There is no break-glass override. A blocked release stays blocked until its evidence is fixed, which is
+  deliberate, but means an urgent fix needs a fresh canary run first.
+- The gate checks canary evidence, not whether the candidate is <em>good</em>; see the canary limits above.</p>
+<p>Try it: <code>python examples/release_demo.py</code> (server running).</p>
+<h2 id="change-attribution-and-verified-fixes-phase-11">Change attribution and verified fixes (Phase 11)</h2>
+<p><strong>Which kind of change caused the regression?</strong> Every canary report now has a <code>change</code> check. It compares the baseline and
+candidate <em>versions</em> (prompt, model and sampling settings, retrieval settings, tool settings) and names the most likely
+cause when the candidate got worse: <code>prompt_regression</code>, <code>model_change</code>, <code>retrieval_config_change</code>, <code>tool_config_change</code>,
+<code>multiple_changes</code> (several things changed together, so it refuses to pick one), or <code>source_data_change</code> (nothing in the
+prompt or settings changed, or retrieval got worse while retrieval settings did not, so the documents, index or traffic did).
+It is informational and never changes the promote / hold / rollback verdict. Keep model settings such as <code>model</code> and
+<code>temperature</code>, and retrieval settings such as <code>top_k</code> and <code>min_score</code>, in the version <code>config</code> so they can be told apart.</p>
+<p><strong>Which document is behind the failures?</strong> <code>POST /v1/agents/{name}/root-causes</code> now also returns <code>suspect_sources</code>:
+documents that appear in many failed runs and rarely in healthy ones (Fisher exact test). It needs each retrieved item to
+carry a <code>source</code> / <code>doc_id</code> / <code>url</code>. It is a lead for a person to check, not proof the document is wrong.</p>
+<p><strong>Fixes that are proven before they are suggested.</strong></p>
+<pre><code class="language-python">result = auditor.verify_fixes(build_agent)   # build_agent(prompt=..., config=...) -&gt; your agent function
+print(result[&quot;recommended&quot;])                 # only candidates that passed
+</code></pre>
+<ol>
+<li>The server proposes small candidates from the measured causes. Each changes one thing: a setting that already exists
+   in your version config, or one added prompt rule. Code bugs and suspect documents become <em>manual</em> items.
+   <code>use_ai=True</code> adds a Claude-written prompt rewrite (needs <code>ANTHROPIC_API_KEY</code> on the server); without it everything
+   else still works.</li>
+<li>Each candidate is registered as its own <strong>non-active</strong> version and your agent is rebuilt with it.</li>
+<li>The candidate is replayed on every regression case (your real past failures) and graded by the server.
+   <code>verified</code> = all pass, <code>improved</code> = at least half pass, otherwise <code>rejected</code>.</li>
+<li><code>guard=20</code> also runs the candidate on recent questions that worked and flags answers that changed a lot.</li>
+<li>Nothing is activated. The next step is a canary and the approval gate.</li>
+</ol>
+<p>Needs regression cases first: <code>auditor.generate_tests()</code>. Endpoint: <code>POST /v1/agents/{name}/fixes/propose</code>.</p>
+<p><strong>Limits.</strong> The suite holds past failures only, so a passing fix may still hurt questions that used to work; the guard check is
+a rough word-overlap comparison, not a quality score. Rule-based proposals only touch settings that exist in your config.
+Attribution is evidence, not proof.</p>
+<h2 id="run-everything-with-one-command-windows">Run everything with one command (Windows)</h2>
+<pre><code class="language-powershell">powershell -ExecutionPolicy Bypass -File .\run-all.ps1            # Auditor server + chatbot, connected, browser opened
+powershell -ExecutionPolicy Bypass -File .\run-all.ps1 -Check     # the same, then the 23-point self-check
+powershell -ExecutionPolicy Bypass -File .\run-all.ps1 -Test      # unit tests only (pip install -e &quot;.[dev]&quot; first)
+</code></pre>
+<p>The first run asks for your chat provider key once and saves it, plus a generated Auditor key, in <code>.env</code> (never committed).
+The dashboard asks for the Auditor key: copy <code>AUDITOR_API_KEY</code> from <code>.env</code>.</p>
+<h2 id="one-command-self-check">One-command self-check</h2>
+<p>With the Auditor server running:</p>
+<pre><code class="language-powershell">python validation\selfcheck.py
+</code></pre>
+<p>It creates a throwaway agent, sends it data with planted faults, and prints PASS or FAIL for each module: evals, root causes,
+failure-to-test, drift, canary (a bad candidate is not promoted, a good one is), change attribution, the release gate
+(self-approval refused, a failed candidate blocked, approve, promote and roll back), the audit trail, fix proposals, and the
+SDK (trace, replay, and a real fix being verified while an irrelevant change is rejected). Results are saved in
+<code>validation/results/</code>. It uses your <code>.env</code> for <code>AUDITOR_URL</code> and <code>AUDITOR_API_KEY</code>.</p>
+<h2 id="check-that-it-works-validation-kit">Check that it works (validation kit)</h2>
+<p><code>validation/</code> tests the project against a support bot whose faults are planted, so the right answer is known:
+does a canary roll back a really worse version and name the cause, how often does it cry wolf, how often is a
+root-cause label right, and what does it miss. <code>python validation/run_validation.py --dry-run</code> needs no server;
+without <code>--dry-run</code> it exercises the API and database. Step-by-step guide: <a href="https://github.com/ArathiS1/agent-auditor/blob/main/validation/README.md">validation/README.md</a>;
+an example report: <a href="https://github.com/ArathiS1/agent-auditor/blob/main/validation/sample_report_dry_run.md">validation/sample_report_dry_run.md</a>.
+On the sample run, three of five planted faults were rolled back every time, half-missing search results were caught
+3 times in 5, and out-of-date facts were never caught: the built-in checks look at symptoms, not facts.</p>
+<h2 id="how-the-pieces-fit">How the pieces fit</h2>
+<p>Runs flow in through the SDK, get scored and diagnosed by the worker, feed drift and canary checks, and a release
+may only promote a version when the gate passes and enough people approve. Every decision, including refusals, is
+in the audit trail. Diagram and component notes: <a href="architecture.html">docs/architecture.md</a>. To validate on your
+own agent, follow <a href="case-study.html">docs/case-study.md</a>.</p>
+<h2 id="sdk-in-20-lines">SDK in 20 lines</h2>
+<pre><code class="language-python">from agent_auditor.sdk import Auditor
+
+auditor = Auditor(&quot;http://127.0.0.1:8000&quot;, agent=&quot;support-bot&quot;)
+auditor.register_version(&quot;v1&quot;, prompt=PROMPT, config={&quot;top_k&quot;: 4})
+
+@auditor.observe(kind=&quot;retrieval&quot;)
+def kb_search(q): ...
+
+@auditor.observe_run()
+def answer(question): ...
+</code></pre>
+<p>See <code>../examples/quickstart_plain.py</code> and <code>../examples/langgraph_demo.py</code>.</p>
+<h2 id="known-limitations">Known limitations</h2>
+<ul>
+<li>The AI helper and suggested fixes are only as good as the figures on the page; they can be wrong, so decisions stay with a person. Run data is sent to the Claude API when the helper is on.</li>
+<li>Approver names are self-asserted (one shared API key), and promotion only flips the active version; it deploys nothing.</li>
+<li>The dashboard has been checked in Chromium against fixtures, not yet against a long-running production server.</li>
+<li>Replay assumes the agent can be called with the stored inputs (a dict of arguments, or <code>call=</code> to adapt).
+  Agents that need live user sessions or external state cannot be replayed faithfully.</li>
+<li>Drift checks run synchronously, sample the newest N runs per window (default max 2000), and use
+  asymptotic KS p-values (close to exact for n &gt;= 30). Drift needs at least <code>min_samples</code> runs per window.</li>
+<li>Evals and diagnosis can run inside a request (up to 500 runs per call). <code>agent-auditor-worker</code> does it in the
+  background and is the recommended setup; it polls, so results lag by up to one interval.</li>
+<li>Built-in scorers detect symptoms, not answer quality. <code>grounded_overlap</code> is a cheap heuristic.</li>
+<li>Local use creates tables with <code>create_all</code>; Docker uses Alembic. The baseline migration is generated from the
+  current models and must be made explicit before the first model change (see the note in the migration).</li>
+<li>The PostgreSQL CI job is experimental; SQLite is the tested backend until it is green.</li>
+<li>Two simultaneous first-ever runs for a brand-new agent name can race; retrying succeeds.</li>
+<li>The LangGraph adapter has been run against LangGraph on one machine only.</li>
+</ul>
+  </main>
+</div>
+<script src="../site.js"></script>
+</body>
+</html>

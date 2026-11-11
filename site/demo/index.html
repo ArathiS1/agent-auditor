@@ -1,0 +1,1346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script src="demo.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Auditor</title>
+<style>
+:root{
+  --bg:#e9ece8; --panel:#f7f8f5; --raised:#ffffff; --ink:#14201d; --ink2:#3d4b47; --muted:#5b6865; --line:#cdd3ce; --grid:#dfe4e0;
+  --rail:#10201c; --rail-ink:#d5e0db; --rail-dim:#8aa098; --rail-hover:#1a2f29; --rail-line:#294039;
+  --ok:#2e7d5b; --ok-bg:#dcefe5; --bad:#c93c08; --bad-bg:#fbe3d8; --warn:#8a5a00; --warn-bg:#fbefd5; --info:#2f5d8a; --info-bg:#dde9f4;
+  --rec:#e8500e; --series:#2f5d8a; --series2:#7a8f89; --focus:#e8500e;
+  --head:"Bahnschrift","DIN Alternate","Roboto Condensed","Segoe UI",system-ui,sans-serif;
+  --mono:"Cascadia Mono",ui-monospace,Consolas,"SFMono-Regular",monospace;
+  --shadow:0 1px 2px rgba(16,32,28,.08),0 4px 14px rgba(16,32,28,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0c1311; --panel:#131c19; --raised:#18231f; --ink:#e3eae6; --ink2:#bccac4; --muted:#8fa09a; --line:#26332f; --grid:#1f2b27;
+    --rail:#080e0c; --rail-hover:#13201c; --rail-line:#1f2f2a;
+    --ok:#4cc38a; --ok-bg:#12301f; --bad:#ff7a45; --bad-bg:#3a1c10; --warn:#f0c060; --warn-bg:#342a10; --info:#6aa6e0; --info-bg:#14283b;
+    --rec:#ff6a2a; --series:#6aa6e0; --series2:#6f8a82; --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0c1311; --panel:#131c19; --raised:#18231f; --ink:#e3eae6; --ink2:#bccac4; --muted:#8fa09a; --line:#26332f; --grid:#1f2b27;
+  --rail:#080e0c; --rail-hover:#13201c; --rail-line:#1f2f2a;
+  --ok:#4cc38a; --ok-bg:#12301f; --bad:#ff7a45; --bad-bg:#3a1c10; --warn:#f0c060; --warn-bg:#342a10; --info:#6aa6e0; --info-bg:#14283b;
+  --rec:#ff6a2a; --series:#6aa6e0; --series2:#6f8a82; --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;display:flex}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+[hidden]{display:none!important}
+.num{font-variant-numeric:tabular-nums}
+a{color:var(--info)}
+h1,h2,h3{font-family:var(--head);font-weight:600;margin:0;letter-spacing:.1px}
+
+/* rail */
+#rail{width:236px;flex:none;background:var(--rail);color:var(--rail-ink);display:flex;flex-direction:column;padding:14px 10px;gap:4px;overflow:auto;height:100vh;position:sticky;top:0}
+#rail .brand{font:600 19px var(--head);display:flex;align-items:center;gap:10px;margin:2px 8px 10px}
+#rail .brand i{width:12px;height:12px;border-radius:50%;background:var(--rec);box-shadow:0 0 0 3px rgba(232,80,14,.3)}
+#rail .grp{font-size:12px;color:var(--rail-dim);margin:12px 10px 3px;letter-spacing:.3px}
+#rail a.nav{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;color:var(--rail-ink);text-decoration:none;font-size:14.5px}
+#rail a.nav:hover{background:var(--rail-hover)}
+#rail a.nav[aria-current="page"]{background:var(--rail-hover);box-shadow:inset 3px 0 0 var(--rec);font-weight:600}
+#rail a.nav .cnt{margin-left:auto;font-size:12px;background:var(--bad);color:#fff;border-radius:999px;padding:0 7px;min-width:20px;text-align:center}
+#rail .spacer{flex:1}
+#rail .foot{font-size:12.5px;color:var(--rail-dim);padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+#rail .foot a{color:var(--rail-ink)}
+
+/* main */
+#main{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow:auto}
+#top{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:10px 24px;flex-wrap:wrap}
+#top h1{font-size:22px;margin-right:auto}
+#menu{display:none}
+.sel{background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:5px 9px;max-width:220px}
+.btn{background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:5px 12px;font-size:14px;white-space:nowrap}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.btn.danger{background:var(--bad);color:#fff;border-color:var(--bad)}
+.btn.quiet{background:transparent;border-color:transparent;color:var(--ink2)}
+.btn.quiet:hover{background:var(--grid)}
+.btn.small{padding:2px 9px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:default}
+#view{padding:22px 24px 60px;max-width:1360px;width:100%}
+.lead{color:var(--ink2);margin:0 0 18px;max-width:78ch}
+.look{background:var(--info-bg);border-left:3px solid var(--info);padding:8px 12px;border-radius:6px;margin:0 0 18px;font-size:14px;max-width:90ch}
+.look b{font-family:var(--head)}
+
+/* building blocks */
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(380px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.tiles{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:16px}
+.tile{background:var(--raised);border:1px solid var(--line);border-radius:10px;padding:12px 14px;box-shadow:var(--shadow)}
+.tile .l{font-size:13px;color:var(--muted)}
+.tile .v{font:600 28px/1.15 var(--head);font-variant-numeric:tabular-nums}
+.tile .s{font-size:12.5px;color:var(--muted)}
+.tile.bad .v{color:var(--bad)}.tile.ok .v{color:var(--ok)}
+.card{background:var(--raised);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);display:flex;flex-direction:column;min-width:0}
+.card>header{display:flex;align-items:center;gap:8px;padding:12px 14px 4px;flex-wrap:wrap}
+.card>header h2{font-size:17px;margin-right:auto}
+.card>header .sub{width:100%;color:var(--muted);font-size:13px;margin-top:-2px}
+.card .bd{padding:8px 14px 14px;min-width:0}
+.card.pad .bd{padding-top:12px}
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:1px 9px;font-size:12.5px;font-weight:600;white-space:nowrap;border:1px solid transparent}
+.badge.ok{background:var(--ok-bg);color:var(--ok)}.badge.bad{background:var(--bad-bg);color:var(--bad)}
+.badge.warn{background:var(--warn-bg);color:var(--warn)}.badge.info{background:var(--info-bg);color:var(--info)}
+.badge.mute{background:var(--grid);color:var(--ink2)}
+.badge.rec{background:var(--rec);color:#fff}
+.pill-row{display:flex;gap:6px;flex-wrap:wrap}
+.toggle{border:1px solid var(--line);background:var(--raised);border-radius:999px;padding:2px 11px;font-size:13px}
+.toggle[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono);font-size:12.5px}
+.stack{display:flex;flex-direction:column;gap:10px}
+
+table.t{border-collapse:collapse;width:100%;font-size:14px}
+table.t th{text-align:left;font-weight:600;font-size:13px;color:var(--muted);padding:6px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.t td{padding:7px 10px;border-bottom:1px solid var(--grid);vertical-align:top}
+table.t tr.click{cursor:pointer}
+table.t tr.click:hover td{background:var(--grid)}
+table.t td.n,table.t th.n{text-align:right;font-variant-numeric:tabular-nums}
+.tw{overflow:auto;max-width:100%}
+.clip{max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* verdict banner */
+.verdict{display:flex;gap:14px;align-items:center;border-radius:12px;padding:14px 18px;margin-bottom:16px;border:1px solid var(--line);background:var(--raised)}
+.verdict .mark{font:700 26px var(--head);width:46px;height:46px;border-radius:50%;display:grid;place-items:center;flex:none;color:#fff;background:var(--ok)}
+.verdict.bad .mark{background:var(--bad)}.verdict.warn .mark{background:var(--warn)}
+.verdict h2{font-size:21px}
+.verdict p{margin:2px 0 0;color:var(--ink2)}
+
+/* the tape */
+.tape{position:relative}
+.tape .strip{display:flex;align-items:flex-end;gap:2px;height:76px;overflow-x:auto;overflow-y:hidden;padding:4px 2px 6px;border-bottom:2px solid var(--ink);scrollbar-width:thin}
+.tape .tk{flex:none;width:6px;border:0;padding:0;border-radius:2px 2px 0 0;background:var(--ok);opacity:.8;position:relative}
+.tape .tk.bad{background:var(--bad);opacity:1;width:7px}
+.tape .tk:hover,.tape .tk.on{opacity:1;outline:2px solid var(--ink);outline-offset:1px;z-index:2}
+.tape .tk.dep::before{content:"";position:absolute;left:-3px;top:-70px;height:80px;border-left:1px dashed var(--muted)}
+.tape .axis{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+/* bars */
+.bl{display:flex;flex-direction:column;gap:7px}
+.bl .r{display:grid;grid-template-columns:minmax(120px,210px) 1fr 70px;gap:10px;align-items:center;font-size:14px}
+.bl .r .k{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bl .r .tr{height:14px;background:var(--grid);border-radius:3px;overflow:hidden;position:relative}
+.bl .r .fl{height:100%;background:var(--series);border-radius:0 3px 3px 0}
+.bl .r .fl.bad{background:var(--bad)}.bl .r .fl.ok{background:var(--ok)}
+.bl .r .vv{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink2)}
+.bl .r.click{cursor:pointer}.bl .r.click:hover .k{text-decoration:underline}
+svg text{font-family:inherit}
+.chart{width:100%;height:auto;display:block}
+.tip{position:fixed;z-index:60;background:var(--ink);color:var(--panel);border-radius:8px;padding:6px 10px;font-size:13px;pointer-events:none;max-width:320px;box-shadow:var(--shadow)}
+.tip b{font-family:var(--head)}
+.tip .m{opacity:.8;font-size:12px}
+
+/* failures */
+.fail{border:1px solid var(--line);border-left:4px solid var(--bad);border-radius:8px;background:var(--raised);padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.fail .q{font-weight:600}
+.fail .ans{color:var(--ink2);font-size:14px;overflow-wrap:anywhere}
+.fail .err{font-family:var(--mono);font-size:12.5px;background:var(--bad-bg);color:var(--bad);padding:6px 8px;border-radius:6px;overflow-wrap:anywhere}
+.fail ul{margin:0;padding-left:1.2em;font-size:14px}
+.fail .todo{background:var(--grid);border-radius:8px;padding:8px 12px;font-size:14px}
+.fail .todo b{font-family:var(--head)}
+
+/* drawer */
+#veil{position:fixed;inset:0;background:rgba(8,14,12,.45);z-index:20}
+#drawer{position:fixed;right:0;top:0;bottom:0;width:min(760px,100vw);background:var(--panel);border-left:1px solid var(--line);z-index:21;display:flex;flex-direction:column;box-shadow:-12px 0 36px rgba(0,0,0,.25)}
+#drawer>header{display:flex;gap:10px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line)}
+#drawer>header h2{font-size:19px;margin-right:auto}
+#drawer .bd{padding:16px 18px 40px;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.sect h3{font-size:15px;margin-bottom:6px}
+pre.box{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font:13px/1.45 var(--mono);max-height:260px;overflow:auto}
+.wf{display:flex;flex-direction:column;gap:5px}
+.wf .s{display:grid;grid-template-columns:150px 1fr 70px;gap:8px;align-items:center;font-size:13.5px}
+.wf .s .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wf .s .tr{background:var(--grid);height:12px;border-radius:3px;position:relative}
+.wf .s .b{position:absolute;top:0;bottom:0;border-radius:3px;background:var(--series);min-width:3px}
+.wf .s .b.tool{background:var(--ok)}.wf .s .b.bad{background:var(--bad)}
+.wf .s.click{cursor:pointer}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:3px 14px;font-size:14px}
+.kv dt{color:var(--muted)}.kv dd{margin:0;overflow-wrap:anywhere}
+
+/* dialogs, toasts, callouts */
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--ink);padding:0;width:min(560px,94vw);max-height:90vh;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+dialog::backdrop{background:rgba(8,14,12,.55)}
+dialog form{padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+dialog h2{font-size:20px}
+.fld{display:flex;flex-direction:column;gap:3px;font-size:14px}
+.fld span{color:var(--ink2);font-size:13px}
+.fld input,.fld select,.fld textarea{background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:7px 9px;width:100%}
+.fld textarea{min-height:70px;resize:vertical}
+.fld small{color:var(--muted)}
+.row.end{justify-content:flex-end}
+#toasts{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:8px;align-items:center}
+.toast{background:var(--ink);color:var(--panel);border-radius:10px;padding:9px 16px;box-shadow:var(--shadow);max-width:min(560px,92vw)}
+.toast.bad{background:var(--bad);color:#fff}
+.callout{border-radius:10px;padding:12px 14px;border:1px solid var(--line);background:var(--raised)}
+.callout.bad{background:var(--bad-bg);border-color:var(--bad);color:var(--ink)}
+.callout.warn{background:var(--warn-bg);border-color:var(--warn)}
+.callout.info{background:var(--info-bg);border-color:var(--info)}
+.callout h3{font-size:16px;margin-bottom:4px}
+.callout ul,.callout ol{margin:6px 0 0;padding-left:1.3em}
+.empty{border:1px dashed var(--line);border-radius:12px;padding:26px;text-align:center;background:var(--raised);color:var(--ink2)}
+.empty h3{font-size:19px;color:var(--ink);margin-bottom:4px}
+.empty p{margin:0 0 12px}
+.cmd{font:13px var(--mono);background:var(--rail);color:#d5e0db;border-radius:8px;padding:10px 12px;overflow:auto;white-space:pre;display:block;position:relative}
+.loading{color:var(--muted);padding:20px 4px}
+.loading::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--rec);margin-right:8px;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.25}}
+
+/* matrix */
+.mx{border-collapse:separate;border-spacing:0;font-size:13.5px;width:100%}
+.mx th,.mx td{padding:5px 8px;border-bottom:1px solid var(--grid);text-align:center}
+.mx th:first-child,.mx td:first-child{text-align:left;position:sticky;left:0;background:var(--raised)}
+.mx td.y{color:var(--ok);font-weight:700}.mx td.n{color:var(--muted)}.mx td.p{color:var(--warn)}.mx td.u{color:var(--muted);opacity:.6}
+.mx td.us{background:var(--grid);font-weight:700}
+.mx tr.gap td:first-child{box-shadow:inset 3px 0 0 var(--bad)}
+.heat{display:grid;gap:3px;font-size:12.5px}
+.heat .c{padding:5px 6px;border-radius:4px;text-align:center;cursor:pointer;min-height:26px;border:1px solid transparent}
+.heat .c.ok{background:var(--ok-bg);color:var(--ok)}.heat .c.bad{background:var(--bad-bg);color:var(--bad)}.heat .c.na{background:var(--grid);color:var(--muted)}
+.heat .h{font-weight:600;color:var(--muted);padding:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* help panel */
+#helpFab{position:fixed;right:18px;bottom:18px;z-index:30;border:0;background:var(--ink);color:var(--panel);border-radius:999px;padding:10px 18px;box-shadow:var(--shadow);font-weight:600}
+#help{position:fixed;right:18px;bottom:72px;z-index:31;width:min(440px,calc(100vw - 24px));height:min(640px,calc(100vh - 100px));background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.3);display:flex;flex-direction:column}
+#help header{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px}
+#help header h2{font-size:17px;margin-right:auto}
+#help .bd{padding:10px 14px;overflow:auto;display:flex;flex-direction:column;gap:8px;flex:1;min-height:0}
+#help .m{padding:7px 10px;border-radius:10px;background:var(--grid);overflow-wrap:anywhere;font-size:14px;max-width:92%;align-self:flex-start}
+#help .m.me{background:var(--info-bg);align-self:flex-end;white-space:pre-wrap}
+#help .m p{margin:0 0 6px}#help .m p:last-child{margin-bottom:0}
+#help .m ul{margin:0 0 6px;padding-left:18px}
+#help .m code{background:var(--raised);padding:0 4px;border-radius:4px;font-size:13px}
+#help .src{margin-top:6px;font-size:12px;color:var(--muted)}
+#help .chips{border-top:1px solid var(--line);padding:6px 14px;max-height:34%;overflow:auto;display:flex;flex-direction:column;gap:4px}
+#help .lvl summary{cursor:pointer;font-weight:600;font-size:13px;padding:2px 0}
+#help .row{display:flex;flex-wrap:wrap;gap:6px;padding:4px 0}
+#help .chip{border:1px solid var(--line);background:var(--raised);color:inherit;border-radius:999px;padding:4px 10px;font-size:13px;cursor:pointer;text-align:left}
+#help .chip:hover{border-color:var(--ink)}
+#help form{display:flex;gap:6px;padding:10px 14px;border-top:1px solid var(--line);align-items:flex-end}
+#help form textarea{flex:1;background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:6px 9px;resize:none;font:inherit;color:inherit}
+.testnote{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--info-bg);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:14px}
+
+@media (max-width:900px){
+  #rail{position:fixed;z-index:25;transform:translateX(-100%);transition:transform .2s}
+  body.nav #rail{transform:none}
+  #menu{display:inline-block}
+  #top,#view{padding-left:14px;padding-right:14px}
+  .bl .r{grid-template-columns:100px 1fr 56px}
+  .g2{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.verdict>div:nth-child(2){flex:1;min-width:0}
+@media(max-width:700px){.verdict{flex-wrap:wrap}.verdict>div:nth-child(2){flex-basis:calc(100% - 70px)}.verdict>div:last-child{margin-left:60px!important}}
+
+</style>
+</head>
+<body>
+<noscript>Agent Auditor needs JavaScript to draw its pages.</noscript>
+<p id="bootmsg">Loading Agent Auditor. If this stays blank, the server is running old code: close its window and start it again with run-all.ps1.</p>
+<script>
+"use strict";
+/* ---------- tiny DOM helpers: text only ever enters the page through textContent ---------- */
+const h = (tag, attrs, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === 'class') n.className = v;
+    else if (k === 'text') n.textContent = v;
+    else if (k === 'style') Object.assign(n.style, v);
+    else if (k.startsWith('on') && typeof v === 'function') n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) n.append(c.nodeType ? c : document.createTextNode(String(c)));
+  return n;
+};
+const SVGNS = 'http://www.w3.org/2000/svg';
+const sv = (tag, attrs, ...kids) => {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) if (v != null) { if (k === 'text') n.textContent = v; else n.setAttribute(k, v); }
+  for (const c of kids.flat()) if (c) n.append(c);
+  return n;
+};
+const $ = (s, r) => (r || document).querySelector(s);
+const q = encodeURIComponent;
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } },
+  sget(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
+  sset(k, v) { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } },
+};
+
+/* ---------- formatting ---------- */
+const fmt = {
+  pct: (x, d = 0) => (x == null ? 'n/a' : (x * 100).toFixed(d) + '%'),
+  ms: (x) => (x == null ? 'n/a' : x >= 1000 ? (x / 1000).toFixed(x >= 10000 ? 0 : 1) + ' s' : Math.round(x) + ' ms'),
+  int: (x) => (x == null ? 'n/a' : Number(x).toLocaleString()),
+  cause: (c) => (c ? String(c).replace(/_/g, ' ') : 'none'),
+  short: (s, n = 90) => { s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; },
+  text: (v) => (v == null ? '' : typeof v === 'string' ? v : (v.text || v.question || v.message || v.content) && typeof (v.text || v.question || v.message || v.content) === 'string' ? (v.text || v.question || v.message || v.content) : JSON.stringify(v)),
+  date: (d) => { const t = new Date(d); return isNaN(t) ? '' : t.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); },
+  ago: (d) => {
+    const s = (Date.now() - new Date(d).getTime()) / 1000;
+    if (isNaN(s)) return '';
+    if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago';
+    if (s < 86400) return Math.floor(s / 3600) + ' h ago'; return Math.floor(s / 86400) + ' d ago';
+  },
+};
+
+/* ---------- state and API ---------- */
+const state = { agent: store.get('aa.agent'), win: store.get('aa.win') || '7d', agents: [], assistant: { enabled: false }, failures: 0, view: 'overview' };
+const WINDOWS = { '1h': ['1 hour', 1], '24h': ['24 hours', 24], '7d': ['7 days', 168], '30d': ['30 days', 720], '90d': ['90 days', 2160] };
+const winHours = () => WINDOWS[state.win][1];
+const sinceIso = () => new Date(Date.now() - winHours() * 3600e3).toISOString();
+
+async function api(path, opts) {
+  const headers = { Accept: 'application/json' };
+  const key = store.sget('aa.key');
+  if (key) headers['X-API-Key'] = key;
+  if (opts && opts.body) headers['Content-Type'] = 'application/json';
+  let r;
+  try { r = await fetch(path, { ...(opts || {}), headers, cache: 'no-store' }); }
+  catch (e) { const err = new Error('Cannot reach the Auditor server. Is it running? (' + location.origin + ')'); err.network = true; throw err; }
+  if (r.status === 401) { const e = new Error('The API key was rejected'); e.auth = true; throw e; }
+  if (!r.ok) {
+    let d = ''; try { d = (await r.json()).detail; } catch (e) { /* not json */ }
+    const msg = typeof d === 'string' ? d : d && d.message ? d.message + (d.blockers ? ': ' + d.blockers.join('; ') : '') : Array.isArray(d) ? d.map((x) => (x.loc || []).slice(1).join('.') + ' ' + x.msg).join('; ') : JSON.stringify(d || r.statusText);
+    const err = new Error(msg || String(r.status)); err.status = r.status; throw err;
+  }
+  return r.json();
+}
+const post = (path, body) => api(path, { method: 'POST', body: JSON.stringify(body || {}) });
+const patch = (path, body) => api(path, { method: 'PATCH', body: JSON.stringify(body || {}) });
+const A = () => '/v1/agents/' + q(state.agent);
+const needAgent = () => {
+  if (!state.agent && (state.agents || []).length) {  // "All agents" cannot be shown on this page: use your chat, else the first real agent
+    const list = state.agents, pick = list.find((a) => a.name === 'chat-agent') || list.find((a) => !/^(demo|validation)-/.test(a.name)) || list[0];
+    state.agent = pick.name; try { store.set('aa.agent', pick.name); } catch (e) { /* storage may be blocked */ }
+    if (typeof drawChrome === 'function') drawChrome();
+  }
+  if (!state.agent) throw Object.assign(new Error('Pick an agent first.'), { noAgent: true });
+};
+
+/* ---------- toasts, tooltips ---------- */
+function toast(text, bad) {
+  const t = h('div', { class: 'toast' + (bad ? ' bad' : ''), role: bad ? 'alert' : 'status', text });
+  $('#toasts').append(t); setTimeout(() => t.remove(), bad ? 7000 : 3200);
+}
+const tip = h('div', { class: 'tip', hidden: true, role: 'tooltip' });
+function showTip(x, y, title, rows) {
+  tip.replaceChildren(h('b', { text: title }), ...(rows || []).map((r) => h('div', { class: 'm', text: r })));
+  tip.hidden = false;
+  const w = tip.offsetWidth, ht = tip.offsetHeight;
+  tip.style.left = Math.max(8, Math.min(innerWidth - w - 8, x + 14)) + 'px';
+  tip.style.top = Math.max(8, Math.min(innerHeight - ht - 8, y + 14)) + 'px';
+}
+const hideTip = () => { tip.hidden = true; };
+function withTip(el, content) {
+  const at = (e) => { const [t, r] = content(); showTip(e.clientX, e.clientY, t, r); };
+  el.addEventListener('pointermove', at); el.addEventListener('pointerleave', hideTip);
+  el.addEventListener('focus', () => { const b = el.getBoundingClientRect(); const [t, r] = content(); showTip(b.left, b.top, t, r); });
+  el.addEventListener('blur', hideTip);
+  return el;
+}
+
+/* ---------- components ---------- */
+const ICON = { ok: '✓', bad: '✕', warn: '▲', info: '●', mute: '•', rec: '●' };
+const badge = (kind, text) => h('span', { class: 'badge ' + kind }, h('span', { 'aria-hidden': 'true', text: ICON[kind] || '' }), text);
+const statusBadge = (s) => (s === 'ok' ? badge('ok', 'ok') : badge('bad', 'failed'));
+const verdictBadge = (v) => {
+  const map = { stable: 'ok', improvement: 'ok', no_change: 'ok', pass: 'ok', promoted: 'ok', approved: 'ok', ready: 'ok', healthy: 'ok', minor_drift: 'warn', warn: 'warn', inconclusive: 'warn', proposed: 'info', promote: 'ok', continue: 'info', hold: 'warn', insufficient_data: 'mute', skipped: 'mute',
+    drift: 'bad', regression: 'bad', fail: 'bad', rollback: 'bad', rolled_back: 'bad', rejected: 'bad', failed: 'bad', block: 'bad', cancelled: 'mute' };
+  return badge(map[v] || 'info', String(v || '').replace(/_/g, ' '));
+};
+
+function card({ title, sub, actions, body, cls }) {
+  const hd = h('header', null, h('h2', { text: title }), ...(actions || []), sub ? h('div', { class: 'sub', text: sub }) : null);
+  const bd = h('div', { class: 'bd' });
+  if (body) bd.append(...[].concat(body));
+  return h('section', { class: 'card ' + (cls || '') }, hd, bd);
+}
+function table(cols, rows, opts) {
+  const o = opts || {};
+  const thead = h('thead', null, h('tr', null, cols.map((c) => h('th', { class: c.num ? 'n' : '', text: c.label }))));
+  const tbody = h('tbody');
+  rows.forEach((r) => {
+    const tr = h('tr', { class: o.onclick ? 'click' : '', tabindex: o.onclick ? '0' : null });
+    cols.forEach((c) => { const v = c.render ? c.render(r) : r[c.key]; tr.append(h('td', { class: (c.num ? 'n ' : '') + (c.clip ? 'clip' : '') }, v == null ? '' : v)); });
+    if (o.onclick) { tr.addEventListener('click', () => o.onclick(r)); tr.addEventListener('keydown', (e) => { if (e.key === 'Enter') o.onclick(r); }); }
+    tbody.append(tr);
+  });
+  if (!rows.length) tbody.append(h('tr', null, h('td', { colspan: cols.length, class: 'muted', text: o.empty || 'Nothing to show.' })));
+  return h('div', { class: 'tw' }, h('table', { class: 't' }, thead, tbody));
+}
+/* horizontal bars: rows = [{label, value, text, kind, onclick, tip}] ; value 0..max */
+function barList(rows, o) {
+  const max = (o && o.max) || Math.max(1, ...rows.map((r) => r.value));
+  const box = h('div', { class: 'bl' });
+  rows.forEach((r) => {
+    const row = h('div', { class: 'r' + (r.onclick ? ' click' : ''), tabindex: r.onclick ? '0' : null, role: r.onclick ? 'button' : null },
+      h('span', { class: 'k', text: r.label, title: r.label }),
+      h('span', { class: 'tr' }, h('span', { class: 'fl ' + (r.kind || ''), style: { width: Math.max(1, (r.value / max) * 100) + '%', display: 'block' } })),
+      h('span', { class: 'vv', text: r.text != null ? r.text : String(r.value) }));
+    if (r.tip) withTip(row, () => [r.label, r.tip]);
+    if (r.onclick) { row.addEventListener('click', r.onclick); row.addEventListener('keydown', (e) => { if (e.key === 'Enter') r.onclick(); }); }
+    box.append(row);
+  });
+  if (!rows.length) box.append(h('div', { class: 'muted', text: (o && o.empty) || 'Nothing to show.' }));
+  return box;
+}
+const emptyState = (title, text, ...actions) => h('div', { class: 'empty' }, h('h3', { text: title }), h('p', { text }), h('div', { class: 'row', style: { justifyContent: 'center' } }, actions));
+const callout = (kind, title, ...kids) => h('div', { class: 'callout ' + kind, role: kind === 'bad' ? 'alert' : null }, title ? h('h3', { text: title }) : null, ...kids);
+const loading = (t) => h('div', { class: 'loading', text: t || 'Loading…' });
+const lookFor = (text) => h('p', { class: 'look' }, h('b', { text: 'What to look for. ' }), text);
+const cmd = (text) => h('code', { class: 'cmd', text });
+
+/* an API error, shown where the content would be, with what to do next */
+function errorBox(e, retry) {
+  let title = 'Something went wrong', help = e.message;
+  if (e.auth) { title = 'The server did not accept the API key'; help = 'Open Setup and paste the key from your .env file (AUDITOR_API_KEY).'; }
+  else if (e.network) { title = 'Cannot reach the Auditor server'; help = e.message + ' Start it with run-all.ps1, or: python -m uvicorn agent_auditor.api.main:app --port 8000'; }
+  else if (e.noAgent) { title = 'No agent selected'; help = 'Pick one in the top bar, or open Setup to connect your chat or load demo data.'; }
+  else if (e.status === 404) { title = 'Not found'; }
+  else if (e.status === 422) { title = 'The server could not use that request'; }
+  else if (e.status >= 500) { title = 'The Auditor server hit an error'; help = e.message + ' Check the server window for the traceback.'; }
+  return callout('bad', title, h('p', { text: help }), retry ? h('button', { class: 'btn', type: 'button', text: 'Try again', onclick: retry }) : null,
+    e.auth ? h('button', { class: 'btn primary', type: 'button', text: 'Open Setup', onclick: () => go('setup') }) : null);
+}
+
+/* ---------- forms in a dialog ---------- */
+function formDialog({ title, intro, fields, submit, danger }) {
+  return new Promise((resolve) => {
+    const dlg = h('dialog', { 'aria-label': title });
+    const inputs = {};
+    const form = h('form', { method: 'dialog' }, h('h2', { text: title }), intro ? h('p', { class: 'muted', text: intro }) : null);
+    fields.forEach((f) => {
+      let inp;
+      if (f.type === 'select') inp = h('select', { name: f.name }, f.options.map((o) => h('option', { value: o.value != null ? o.value : o, text: o.label || o })));
+      else if (f.type === 'textarea') inp = h('textarea', { name: f.name, placeholder: f.placeholder || '' });
+      else if (f.type === 'checkbox') inp = h('input', { type: 'checkbox', name: f.name });
+      else inp = h('input', { type: f.type || 'text', name: f.name, placeholder: f.placeholder || '', step: f.step, min: f.min, max: f.max, required: f.required });
+      if (f.value != null) { if (f.type === 'checkbox') inp.checked = !!f.value; else inp.value = f.value; }
+      inputs[f.name] = inp;
+      form.append(h('label', { class: 'fld' }, h('span', { text: f.label }), inp, f.help ? h('small', { text: f.help }) : null));
+    });
+    const out = (v) => { dlg.close(); dlg.remove(); resolve(v); };
+    form.append(h('div', { class: 'row end' }, h('button', { class: 'btn', type: 'button', text: 'Cancel', onclick: () => out(null) }), h('button', { class: 'btn ' + (danger ? 'danger' : 'primary'), type: 'submit', text: submit || 'OK' })));
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const v = {}; fields.forEach((f) => { const i = inputs[f.name]; v[f.name] = f.type === 'checkbox' ? i.checked : f.type === 'number' ? (i.value === '' ? null : Number(i.value)) : i.value.trim(); });
+      out(v);
+    });
+    dlg.addEventListener('cancel', () => out(null));
+    dlg.append(form); document.body.append(dlg); dlg.showModal();
+    const first = form.querySelector('input,select,textarea'); if (first) first.focus();
+  });
+}
+const confirmDialog = (title, text, label, danger) => formDialog({ title, intro: text, fields: [], submit: label || 'Yes', danger }).then((v) => v != null);
+
+/* run an action: toast the result, show errors, then refresh the view */
+async function act(okText, fn, after) {
+  try { const r = await fn(); if (okText) toast(okText); if (after !== false) refreshView(); return r; }
+  catch (e) { toast(e.message, true); return null; }
+}
+
+/* views register themselves here; 90-main.js draws them */
+const views = {};
+
+"use strict";
+/* ---------- chart card with a table twin ---------- */
+function twinCard({ title, sub, chart, tableEl, actions }) {
+  const view = h('div'); let asTable = false;
+  const tgl = h('button', { class: 'btn quiet small', type: 'button', 'aria-pressed': 'false', text: 'Table view' });
+  const draw = () => { hideTip(); view.replaceChildren(asTable ? tableEl() : chart()); };
+  tgl.addEventListener('click', () => { asTable = !asTable; tgl.setAttribute('aria-pressed', String(asTable)); tgl.textContent = asTable ? 'Chart view' : 'Table view'; draw(); });
+  draw();
+  return card({ title, sub, actions: [...(actions || []), tgl], body: view });
+}
+
+/* ---------- taxonomy (cause meanings and advice), loaded once ---------- */
+let _tax = null;
+async function taxonomy() { if (!_tax) { const l = await api('/v1/root-causes/taxonomy'); _tax = Object.fromEntries(l.map((t) => [t.cause, t])); } return _tax; }
+
+/* ---------- the run drawer ---------- */
+function closeDrawer() { const d = $('#drawer'); if (d) d.remove(); const v = $('#veil'); if (v) v.remove(); document.removeEventListener('keydown', drawerKey); }
+function drawerKey(e) { if (e.key === 'Escape') closeDrawer(); }
+async function openRun(id) {
+  closeDrawer();
+  const bd = h('div', { class: 'bd' }, loading('Loading the run…'));
+  const title = h('h2', { text: 'Run ' + id.slice(0, 8) });
+  const drawer = h('aside', { id: 'drawer', role: 'dialog', 'aria-label': 'Run details' }, h('header', null, title, h('button', { class: 'btn', type: 'button', text: 'Close', onclick: closeDrawer })), bd);
+  document.body.append(h('div', { id: 'veil', onclick: closeDrawer }), drawer);
+  document.addEventListener('keydown', drawerKey);
+  try {
+    const [run, evals, diag, tax] = await Promise.all([api('/v1/runs/' + q(id)), api('/v1/runs/' + q(id) + '/evals').catch(() => []), api('/v1/runs/' + q(id) + '/diagnosis').catch(() => null), taxonomy().catch(() => ({}))]);
+    bd.replaceChildren(...runSections(run, evals, diag, tax));
+  } catch (e) { bd.replaceChildren(errorBox(e, () => openRun(id))); }
+}
+function runSections(run, evals, diag, tax) {
+  const out = [];
+  const meta = h('dl', { class: 'kv' });
+  [['Status', statusBadge(run.status)], ['Agent', run.agent], ['Version', run.version || '(none)'], ['Environment', run.environment], ['Started', fmt.date(run.started_at) + ' (' + fmt.ago(run.started_at) + ')'], ['Took', fmt.ms(run.latency_ms)],
+    ...Object.entries(run.tags || {}).filter(([k]) => !['conversation', 'turn_id'].includes(k)).map(([k, v]) => ['Tag ' + k, typeof v === 'object' ? JSON.stringify(v) : String(v)])]
+    .forEach(([k, v]) => meta.append(h('dt', { text: k }), h('dd', null, v)));
+  out.push(h('div', { class: 'sect' }, meta));
+  out.push(h('div', { class: 'sect' }, h('h3', { text: 'Question' }), h('pre', { class: 'box', text: fmt.text(run.input) || '(empty)' })));
+  out.push(h('div', { class: 'sect' }, h('h3', { text: 'Answer' }), h('pre', { class: 'box', text: fmt.text(run.output) || '(no answer was produced)' })));
+  if (run.error) out.push(h('div', { class: 'sect' }, h('h3', { text: 'Error' }), h('pre', { class: 'box', style: { color: 'var(--bad)' }, text: run.error })));
+  if (diag && diag.status === 'failed') {
+    const t = tax[diag.cause] || {};
+    out.push(callout('bad', 'Why it failed: ' + fmt.cause(diag.cause) + (diag.strength ? ' (' + diag.strength + ' evidence)' : ''),
+      h('p', { text: diag.explanation || t.meaning || '' }),
+      (t.advice && t.advice.length) ? h('div', null, h('b', { text: 'What to change' }), h('ul', null, t.advice.map((a) => h('li', { text: a })))) : null));
+  } else if (diag) out.push(callout('info', 'No failure found', h('p', { text: 'The checks and steps for this run look healthy.' })));
+  const ran = evals.filter((x) => x.applicable);
+  if (ran.length) out.push(h('div', { class: 'sect' }, h('h3', { text: 'Checks' }), table([
+    { label: 'Check', render: (x) => x.scorer.replace(/_/g, ' ') }, { label: 'Result', render: (x) => (x.passed ? badge('ok', 'passed') : badge('bad', 'failed')) }, { label: 'Why', render: (x) => x.reason || '' }], ran)));
+  if (run.steps && run.steps.length) out.push(waterfall(run));
+  const acts = h('div', { class: 'row' });
+  acts.append(h('button', { class: 'btn', type: 'button', text: 'Make a regression test from this run', onclick: async () => { const r = await act(null, () => post('/v1/runs/' + q(run.id) + '/to-test', {}), false); if (r) toast(r.created ? 'Regression test created.' : 'A test for this failure already exists.'); } }),
+    h('button', { class: 'btn', type: 'button', text: 'Check again', onclick: () => openRun(run.id) }));
+  if (run.tags && run.tags.turn_id) {
+    const fb = (rating) => act(rating === 'up' ? 'Marked as a good answer.' : 'Marked as a bad answer.', () => post('/v1/feedback', { agent: run.agent, turn_id: run.tags.turn_id, rating }), false).then(() => openRun(run.id));
+    acts.append(h('button', { class: 'btn', type: 'button', text: '👍 Good answer', onclick: () => fb('up') }), h('button', { class: 'btn', type: 'button', text: '👎 Bad answer', onclick: () => fb('down') }));
+  }
+  out.push(acts);
+  return out;
+}
+function waterfall(run) {
+  const t0 = new Date(run.started_at).getTime(), total = Math.max(run.latency_ms || 1, ...run.steps.map((s) => (s.started_at && s.latency_ms ? new Date(s.started_at).getTime() - t0 + s.latency_ms : 0)), 1);
+  const wrap = h('div', { class: 'wf' });
+  run.steps.forEach((s) => {
+    const off = s.started_at ? Math.max(0, new Date(s.started_at).getTime() - t0) : 0, w = s.latency_ms || 0;
+    const detail = h('div', { hidden: true, class: 'stack' },
+      s.error ? h('pre', { class: 'box', style: { color: 'var(--bad)' }, text: s.error }) : null,
+      h('pre', { class: 'box', text: 'in: ' + fmt.short(JSON.stringify(s.input), 600) + '\nout: ' + fmt.short(JSON.stringify(s.output), 900) + (Object.keys(s.attributes || {}).length ? '\n' + JSON.stringify(s.attributes) : '') }));
+    const row = h('div', { class: 's click', tabindex: '0', role: 'button', 'aria-expanded': 'false' },
+      h('span', { class: 'nm', title: s.name }, s.status === 'error' ? badge('bad', s.name) : s.name),
+      h('span', { class: 'tr' }, h('span', { class: 'b ' + (s.status === 'error' ? 'bad' : s.kind === 'llm' ? '' : 'tool'), style: { left: (off / total * 100) + '%', width: Math.max(0.8, w / total * 100) + '%' } })),
+      h('span', { class: 'muted num', text: fmt.ms(s.latency_ms) }));
+    const tg = () => { detail.hidden = !detail.hidden; row.setAttribute('aria-expanded', String(!detail.hidden)); };
+    row.addEventListener('click', tg); row.addEventListener('keydown', (e) => { if (e.key === 'Enter') tg(); });
+    wrap.append(row, detail);
+  });
+  return h('div', { class: 'sect' }, h('h3', { text: 'Steps (' + run.steps.length + ')' }), wrap);
+}
+
+"use strict";
+function tapeEl(runs) {
+  const list = runs.slice().reverse(); // oldest on the left, newest on the right
+  const maxLat = Math.max(1, ...list.map((r) => r.latency_ms || 0));
+  const strip = h('div', { class: 'strip', role: 'listbox', 'aria-label': 'Recent runs, oldest to newest', tabindex: '0' });
+  let sel = -1, prevVersion = null; const ticks = [];
+  list.forEach((r, i) => {
+    const hgt = 14 + Math.round(Math.sqrt((r.latency_ms || 0) / maxLat) * 50);
+    const tk = h('button', { class: 'tk' + (r.status === 'error' ? ' bad' : '') + (prevVersion !== null && r.version !== prevVersion ? ' dep' : ''), type: 'button', tabindex: '-1', style: { height: hgt + 'px' }, 'aria-label': (r.status === 'ok' ? 'ok' : 'failed') + ' run ' + fmt.date(r.started_at), onclick: () => openRun(r.id) });
+    withTip(tk, () => [x0(r) + ' \u00b7 ' + fmt.ms(r.latency_ms), [fmt.date(r.started_at) + (r.version ? ' \u00b7 ' + r.version : ''), fmt.short(fmt.text(r.input), 80), r.error ? fmt.short(r.error, 90) : ''].filter(Boolean)]);
+    prevVersion = r.version; ticks.push(tk); strip.append(tk);
+  });
+  const mark = (i) => { ticks.forEach((t, k) => t.classList.toggle('on', k === i)); if (ticks[i]) ticks[i].scrollIntoView({ block: 'nearest', inline: 'nearest' }); };
+  strip.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') { sel = Math.max(0, (sel < 0 ? ticks.length : sel) - 1); mark(sel); e.preventDefault(); }
+    else if (e.key === 'ArrowRight') { sel = Math.min(ticks.length - 1, sel + 1); mark(sel); e.preventDefault(); }
+    else if (e.key === 'Enter' && sel >= 0) openRun(list[sel].id);
+  });
+  requestAnimationFrame(() => { strip.scrollLeft = strip.scrollWidth; });
+  const bad = list.filter((r) => r.status === 'error').length;
+  return h('div', { class: 'tape' }, strip,
+    h('div', { class: 'axis' }, h('span', { text: list.length ? fmt.date(list[0].started_at) : '' }), h('span', { text: list.length + ' runs, ' + bad + ' failed' }), h('span', { text: list.length ? fmt.date(list[list.length - 1].started_at) : '' })),
+    h('div', { class: 'legend' }, h('span', null, h('i', { style: { background: 'var(--ok)' } }), 'ok'), h('span', null, h('i', { style: { background: 'var(--bad)' } }), 'failed'), h('span', { text: 'Taller means slower. A dashed line marks a new version going live. Click a tick to open the run.' })));
+}
+const x0 = (r) => (r.status === 'ok' ? '✓ ok' : '✕ failed');
+
+function activityChart(tl) {
+  const b = tl.buckets, W = 760, H = 170, pl = 34, pb = 22, pt = 8;
+  const max = Math.max(1, ...b.map((x) => x.ok + x.error)), bw = (W - pl) / Math.max(1, b.length);
+  const svg = sv('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chart', role: 'img', 'aria-label': 'Runs over time, stacked by ok and failed' });
+  [0, 0.5, 1].forEach((f) => { const y = pt + (H - pb - pt) * (1 - f); svg.append(sv('line', { x1: pl, x2: W, y1: y, y2: y, stroke: 'var(--grid)' }), sv('text', { x: pl - 5, y: y + 4, 'text-anchor': 'end', 'font-size': 11, fill: 'var(--muted)', text: Math.round(max * f) })); });
+  b.forEach((x, i) => {
+    const hOk = (H - pb - pt) * (x.ok / max), hEr = (H - pb - pt) * (x.error / max), xx = pl + i * bw + 1, w = Math.max(1, bw - 2);
+    const g = sv('g', { tabindex: '0' });
+    g.append(sv('rect', { x: xx, y: H - pb - hOk, width: w, height: hOk, fill: 'var(--ok)', opacity: 0.75 }), sv('rect', { x: xx, y: H - pb - hOk - hEr - (hOk && hEr ? 2 : 0), width: w, height: hEr, fill: 'var(--bad)' }), sv('rect', { x: xx, y: pt, width: w, height: H - pb - pt, fill: 'transparent' }));
+    withTip(g, () => [fmt.date(x.t), [x.ok + ' ok, ' + x.error + ' failed', x.p50_ms != null ? 'median ' + fmt.ms(x.p50_ms) : ''].filter(Boolean)]);
+    svg.append(g);
+  });
+  if (b.length) svg.append(sv('text', { x: pl, y: H - 5, 'font-size': 11, fill: 'var(--muted)', text: fmt.date(b[0].t) }), sv('text', { x: W, y: H - 5, 'text-anchor': 'end', 'font-size': 11, fill: 'var(--muted)', text: fmt.date(b[b.length - 1].t) }));
+  return svg;
+}
+
+views.overview = {
+  title: 'Overview',
+  async render(root) {
+    const a = state.agent ? '?agent=' + q(state.agent) + '&' : '?';
+    root.replaceChildren(loading());
+    const hrs = winHours();
+    const [ov, tl, runs, fl] = await Promise.all([
+      api('/v1/insights/overview' + a + 'hours=' + hrs), api('/v1/insights/timeline' + a + 'hours=' + Math.min(hrs, 168)),
+      api('/v1/runs?limit=200' + (state.agent ? '&agent=' + q(state.agent) : '')), api('/v1/insights/failures' + a + 'hours=' + hrs + '&limit=5')]);
+    state.failures = ov.problem_runs; drawNavCounts();
+    const high = ov.alerts.filter((x) => x.severity === 'high').length, med = ov.alerts.filter((x) => x.severity === 'medium').length;
+    const kind = high ? 'bad' : med ? 'warn' : 'ok';
+    const out = [];
+    if (!ov.runs && !ov.agents.length) { root.replaceChildren(onboarding()); return; }
+    out.push(h('div', { class: 'verdict ' + kind }, h('div', { class: 'mark', 'aria-hidden': 'true', text: kind === 'ok' ? '✓' : kind === 'bad' ? '!' : '▲' }),
+      h('div', null, h('h2', { text: kind === 'ok' ? 'All clear' : (high + med) + (high + med === 1 ? ' thing needs' : ' things need') + ' attention' }),
+        h('p', { text: ov.runs ? ov.runs + ' runs in the last ' + WINDOWS[state.win][0] + ': ' + ov.errors + ' errored, ' + Math.max(0, ov.problem_runs - ov.errors) + ' more answered badly' + (ov.pass_rate != null ? '; ' + fmt.pct(ov.pass_rate) + ' of quality checks passed.' : '.') : 'No runs in this period yet.' })),
+      h('div', { style: { marginLeft: 'auto' }, class: 'row' }, h('button', { class: 'btn', type: 'button', text: 'Score and diagnose now', onclick: () => scoreNow() }))));
+    out.push(h('div', { class: 'tiles' },
+      tile('Runs', fmt.int(ov.runs), ov.agents.length + ' agent' + (ov.agents.length === 1 ? '' : 's')),
+      tile('Runs with problems', ov.problem_rate == null ? 'n/a' : fmt.pct(ov.problem_rate, 1), ov.errors + ' errored, ' + Math.max(0, ov.problem_runs - ov.errors) + ' bad answers', ov.problem_rate > 0.1 ? 'bad' : ''),
+      tile('Quality checks passed', ov.pass_rate == null ? 'n/a' : fmt.pct(ov.pass_rate), ov.evaluated ? ov.passed + ' of ' + ov.evaluated : 'not scored yet', ov.pass_rate != null && ov.pass_rate < 0.8 ? 'bad' : ov.pass_rate != null ? 'ok' : ''),
+      tile('Median answer time', fmt.ms(ov.p50_ms), 'slowest 5%: ' + fmt.ms(ov.p95_ms)),
+      tile('Not scored yet', fmt.int(ov.unevaluated), ov.unevaluated ? 'press Score and diagnose' : 'all runs checked')));
+    out.push(card({ title: 'The tape', sub: 'Every recent run, oldest to newest. This is your agent’s flight recorder.', body: runs.length ? tapeEl(runs) : h('div', { class: 'muted', text: 'No runs yet.' }), cls: 'pad' }));
+    out.push(h('div', { style: { height: '14px' } }));
+    out.push(card({ title: 'Action needed', sub: 'What the Auditor found, most urgent first.', body: ov.alerts.length ? h('div', { class: 'stack' }, ov.alerts.map((al) => h('div', { class: 'callout ' + (al.severity === 'high' ? 'bad' : al.severity === 'medium' ? 'warn' : 'info') }, h('div', { class: 'row' }, h('b', { text: al.title }), h('button', { class: 'btn small', type: 'button', style: { marginLeft: 'auto' }, text: 'Open ' + al.view.replace('-', ' '), onclick: () => go(al.view) })), al.detail ? h('div', { class: 'muted', text: al.detail }) : null))) : h('div', { class: 'muted', text: 'Nothing needs attention right now.' }), cls: 'pad' }));
+    out.push(h('div', { style: { height: '14px' } }));
+    const left = twinCard({ title: 'Runs over time', sub: 'Green is ok, orange is failed.', chart: () => activityChart(tl), tableEl: () => table([{ label: 'Period', render: (x) => fmt.date(x.t) }, { label: 'ok', num: true, key: 'ok' }, { label: 'failed', num: true, key: 'error' }, { label: 'median', num: true, render: (x) => fmt.ms(x.p50_ms) }], tl.buckets.filter((x) => x.ok || x.error)) });
+    const causeRows = Object.entries(ov.causes).sort((x, y) => y[1] - x[1]).map(([c, n]) => ({ label: fmt.cause(c), value: n, kind: 'bad', onclick: () => go('causes') }));
+    const kindRows = Object.entries(ov.error_kinds).sort((x, y) => y[1] - x[1]).map(([c, n]) => ({ label: fmt.cause(c), value: n, kind: 'bad', onclick: () => go('failures') }));
+    const right = card({ title: 'What is going wrong', sub: 'Likely cause of each failed run, then the kind of error text.', body: h('div', { class: 'stack' }, h('div', null, h('b', { text: 'Causes' }), barList(causeRows, { empty: 'No diagnosed failures.' })), h('div', null, h('b', { text: 'Error messages' }), barList(kindRows, { empty: 'No error messages recorded.' }))) });
+    out.push(h('div', { class: 'grid g2' }, left, right));
+    out.push(h('div', { style: { height: '14px' } }));
+    if (fl.items.length) out.push(card({ title: 'Latest failures', actions: [h('button', { class: 'btn small', type: 'button', text: 'See all', onclick: () => go('failures') })], body: h('div', { class: 'stack' }, fl.items.map((f) => failureCard(f))) }));
+    out.push(h('div', { style: { height: '14px' } }));
+    out.push(card({ title: 'Agents', sub: 'Click one to look at it alone.', body: table([{ label: 'Agent', render: (x) => x.name }, { label: 'Active version', render: (x) => x.active_version || '(none)' }, { label: 'Runs', num: true, render: (x) => fmt.int(x.runs) }, { label: 'Failed', num: true, render: (x) => x.errors }, { label: 'Failure rate', num: true, render: (x) => fmt.pct(x.error_rate, 1) }, { label: 'Drift', render: (x) => (x.drift ? verdictBadge(x.drift) : h('span', { class: 'muted', text: 'not checked' })) }, { label: 'Last run', render: (x) => (x.last_run ? fmt.ago(x.last_run) : '') }], ov.agents, { onclick: (x) => { selectAgent(x.name); } }) }));
+    root.replaceChildren(...out);
+  },
+};
+const tile = (l, v, s, k) => h('div', { class: 'tile ' + (k || '') }, h('div', { class: 'l', text: l }), h('div', { class: 'v', text: v }), h('div', { class: 's', text: s || '' }));
+
+async function scoreNow() {
+  try {
+    toast('Scoring and diagnosing…');
+    const body = state.agent ? { agent: state.agent, limit: 500 } : { limit: 500 };
+    const ev = await post('/v1/evals/run', body);
+    const targets = state.agent ? [state.agent] : state.agents.map((x) => x.name);
+    for (const t of targets) await post('/v1/agents/' + q(t) + '/diagnose', { limit: 500 }).catch(() => null);
+    toast('Checked ' + ev.evaluated_runs + ' runs.'); refreshView();
+  } catch (e) { toast(e.message, true); }
+}
+
+function failureCard(f, opts) {
+  const o = opts || {};
+  const el = h('article', { class: 'fail' },
+    h('div', { class: 'row' }, f.cause ? badge('bad', fmt.cause(f.cause)) : badge('bad', f.error_kind ? fmt.cause(f.error_kind) : 'failed'), f.error_kind && f.cause ? badge('mute', 'error: ' + fmt.cause(f.error_kind)) : null,
+      h('span', { class: 'muted', text: fmt.ago(f.started_at) + ' · ' + f.agent + (f.version ? ' · ' + f.version : '') + ' · ' + f.environment }), h('button', { class: 'btn small', type: 'button', style: { marginLeft: 'auto' }, text: 'Open trace', onclick: () => openRun(f.run_id) })),
+    h('div', { class: 'q', text: fmt.short(f.question, 200) || '(empty question)' }),
+    f.error ? h('div', { class: 'err', text: f.error }) : (f.answer ? h('div', { class: 'ans', text: fmt.short(f.answer, 260) }) : null),
+    f.failed_checks && f.failed_checks.length ? h('ul', null, f.failed_checks.map((c) => h('li', null, h('b', { text: c.scorer.replace(/_/g, ' ') + ': ' }), c.reason))) : null,
+    f.advice && f.advice.length ? h('div', { class: 'todo' }, h('b', { text: 'What to change: ' }), f.advice[0], f.advice.length > 1 && o.full ? h('ul', null, f.advice.slice(1).map((x) => h('li', { text: x }))) : null) : null);
+  return el;
+}
+
+function onboarding() {
+  return h('div', { class: 'stack' },
+    h('div', { class: 'empty' }, h('h3', { text: 'No agents are sending runs yet' }), h('p', { text: 'Nothing is wrong. The Auditor is running, and it is waiting for an agent to report to it.' }),
+      h('div', { class: 'row', style: { justifyContent: 'center' } }, h('button', { class: 'btn primary', type: 'button', text: 'Connect the chat app', onclick: () => go('setup') }), h('button', { class: 'btn', type: 'button', text: 'Load demo data to explore', onclick: () => seedDemo() }))),
+    lookFor('Demo data adds a made-up support bot with two versions, some failures, and a version that is worse than the other, so every page has something to show. You can ignore it later.'));
+}
+
+"use strict";
+views.failures = {
+  title: 'Failures',
+  async render(root) {
+    needAgentOptional();
+    const f = { env: '', cause: null, kind: null };
+    const body = h('div', { class: 'stack' });
+    root.replaceChildren(lookFor('Each card is one run that went wrong. The orange tag is the likely cause; the box says what to change first. Open the trace to see every step.'), body);
+    const draw = async () => {
+      body.replaceChildren(loading());
+      const qs = (state.agent ? 'agent=' + q(state.agent) + '&' : '') + 'hours=' + winHours() + '&limit=100' + (f.env ? '&environment=' + f.env : '');
+      const d = await api('/v1/insights/failures?' + qs);
+      const items = d.items.filter((x) => (!f.cause || x.cause === f.cause) && (!f.kind || x.error_kind === f.kind));
+      const chip = (label, n, key, val) => h('button', { class: 'toggle', type: 'button', 'aria-pressed': String(f[key] === val), text: fmt.cause(label) + ' (' + n + ')', onclick: () => { f[key] = f[key] === val ? null : val; draw(); } });
+      const envSel = h('select', { class: 'sel', 'aria-label': 'Environment', onchange: (e) => { f.env = e.target.value; draw(); } }, ['', 'production', 'canary', 'test'].map((v) => h('option', { value: v, text: v || 'All environments', selected: v === f.env })));
+      const bar = h('div', { class: 'row' }, envSel, h('button', { class: 'btn', type: 'button', text: 'Turn failures into regression tests', onclick: () => genTests() }), h('button', { class: 'btn', type: 'button', text: 'Propose fixes', onclick: () => go('fixes') }), h('button', { class: 'btn', type: 'button', text: 'Refresh', onclick: draw }));
+      const chips = h('div', { class: 'stack' },
+        Object.keys(d.causes).length ? h('div', { class: 'pill-row' }, h('span', { class: 'muted', text: 'Cause:' }), Object.entries(d.causes).map(([k, n]) => chip(k, n, 'cause', k))) : null,
+        Object.keys(d.error_kinds).length ? h('div', { class: 'pill-row' }, h('span', { class: 'muted', text: 'Error type:' }), Object.entries(d.error_kinds).map(([k, n]) => chip(k, n, 'kind', k))) : null);
+      const list = items.length ? items.map((x) => { const c = failureCard(x, { full: true }); if (state.assistant.enabled && state.agent) c.append(h('div', { class: 'row' }, h('button', { class: 'btn small', type: 'button', text: 'Ask the AI helper for a fix', onclick: () => suggestFix() }))); return c; })
+        : [emptyState(d.count ? 'No failures match these filters' : 'No failures in this period', d.count ? 'Clear a filter above.' : 'Nothing failed in the last ' + WINDOWS[state.win][0] + '. Try a longer period, or run the chat and ask something hard.')];
+      body.replaceChildren(bar, chips, h('div', { class: 'muted', text: d.count + ' failed run' + (d.count === 1 ? '' : 's') + ' in the last ' + WINDOWS[state.win][0] + (d.count >= 100 ? ' (showing the newest 100)' : '') }), ...list);
+    };
+    try { await draw(); } catch (e) { body.replaceChildren(errorBox(e, draw)); }
+  },
+};
+const needAgentOptional = () => {};
+async function genTests() {
+  needAgent();
+  const ok = await confirmDialog('Make regression tests', 'Each distinct failure becomes a saved test (input plus what a good answer must satisfy). Passwords and keys are redacted.', 'Create tests');
+  if (!ok) return;
+  const r = await act(null, () => post(A() + '/tests/generate', { environment: 'production', since_hours: winHours(), limit: 100 }), false);
+  if (r) toast(r.created.length + ' test' + (r.created.length === 1 ? '' : 's') + ' created, ' + r.merged_duplicates + ' duplicates merged.');
+}
+async function suggestFix() {
+  needAgent();
+  const dlg = h('dialog', { 'aria-label': 'Suggested fix' }), out = h('div', { class: 'stack' }, loading('Asking the AI helper…'));
+  dlg.append(h('form', { method: 'dialog' }, h('h2', { text: 'Suggested fix' }), out, h('div', { class: 'row end' }, h('button', { class: 'btn', type: 'submit', text: 'Close' }))));
+  document.body.append(dlg); dlg.showModal(); dlg.addEventListener('close', () => dlg.remove());
+  try { const r = await post(A() + '/suggest-fix', { environment: 'production', since_hours: winHours() }); out.replaceChildren(h('pre', { class: 'box', text: r.suggestion }), h('p', { class: 'muted', text: r.note || '' })); }
+  catch (e) { out.replaceChildren(errorBox(e)); }
+}
+
+views.runs = {
+  title: 'Runs',
+  async render(root) {
+    const f = { status: '', env: '', version: '', text: '', offset: 0 }, PAGE = 40;
+    const body = h('div', { class: 'stack' });
+    let versions = [];
+    try { if (state.agent) versions = (await api(A() + '/versions')).map((v) => v.label); } catch (e) { /* the table below shows errors */ }
+    root.replaceChildren(lookFor('Every run the Auditor recorded. Use the filters to narrow down, then click a row to see the question, the answer and each step.'), body);
+    const draw = async () => {
+      const sel = (name, opts, key) => h('select', { class: 'sel', 'aria-label': name, onchange: (e) => { f[key] = e.target.value; f.offset = 0; draw(); } }, opts.map((o) => h('option', { value: o[0], text: o[1], selected: o[0] === f[key] })));
+      const search = h('input', { class: 'sel', type: 'search', placeholder: 'Search question, answer or error', 'aria-label': 'Search runs', value: f.text, style: { minWidth: '260px' } });
+      search.addEventListener('keydown', (e) => { if (e.key === 'Enter') { f.text = search.value; f.offset = 0; draw(); } });
+      const bar = h('div', { class: 'row' }, sel('Status', [['', 'Any status'], ['ok', 'ok'], ['error', 'failed']], 'status'), sel('Environment', [['', 'Any environment'], ['production', 'production'], ['canary', 'canary'], ['test', 'test']], 'env'), sel('Version', [['', 'Any version'], ...versions.map((v) => [v, v])], 'version'), search, h('button', { class: 'btn', type: 'button', text: 'Search', onclick: () => { f.text = search.value; f.offset = 0; draw(); } }));
+      body.replaceChildren(bar, loading());
+      try {
+        const qs = ['limit=' + PAGE, 'offset=' + f.offset, state.agent && 'agent=' + q(state.agent), f.status && 'status=' + f.status, f.env && 'environment=' + f.env, f.version && 'version=' + q(f.version), f.text && 'q=' + q(f.text)].filter(Boolean).join('&');
+        const runs = await api('/v1/runs?' + qs);
+        const t = table([{ label: 'When', render: (r) => fmt.date(r.started_at) }, { label: 'Status', render: (r) => statusBadge(r.status) }, { label: 'Question', clip: true, render: (r) => fmt.short(fmt.text(r.input), 120) }, { label: 'Answer or error', clip: true, render: (r) => fmt.short(r.error || fmt.text(r.output), 120) },
+          { label: 'Version', render: (r) => r.version || '' }, { label: 'Env', render: (r) => r.environment }, { label: 'Took', num: true, render: (r) => fmt.ms(r.latency_ms) }, { label: 'Steps', num: true, render: (r) => r.step_count }], runs, { onclick: (r) => openRun(r.id), empty: 'No runs match.' });
+        const pager = h('div', { class: 'row' }, h('button', { class: 'btn', type: 'button', text: 'Newer', disabled: f.offset === 0, onclick: () => { f.offset = Math.max(0, f.offset - PAGE); draw(); } }), h('span', { class: 'muted', text: 'Showing ' + (runs.length ? f.offset + 1 : 0) + ' to ' + (f.offset + runs.length) }), h('button', { class: 'btn', type: 'button', text: 'Older', disabled: runs.length < PAGE, onclick: () => { f.offset += PAGE; draw(); } }));
+        body.replaceChildren(bar, card({ title: 'Runs', body: t }), pager);
+      } catch (e) { body.replaceChildren(bar, errorBox(e, draw)); }
+    };
+    draw();
+  },
+};
+
+"use strict";
+function lineDiff(a, b) {
+  const x = (a || '').split('\n'), y = (b || '').split('\n');
+  const n = x.length, m = y.length, L = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = x[i] === y[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  const out = []; let i = 0, j = 0;
+  while (i < n && j < m) { if (x[i] === y[j]) { out.push([' ', x[i]]); i++; j++; } else if (L[i + 1][j] >= L[i][j + 1]) out.push(['-', x[i++]]); else out.push(['+', y[j++]]); }
+  while (i < n) out.push(['-', x[i++]]); while (j < m) out.push(['+', y[j++]]);
+  return out;
+}
+function diffEl(a, b) {
+  const box = h('pre', { class: 'box' });
+  lineDiff(a, b).forEach(([k, t]) => box.append(h('div', { style: { background: k === '+' ? 'var(--ok-bg)' : k === '-' ? 'var(--bad-bg)' : '' } }, k + ' ' + t)));
+  return box;
+}
+
+views.versions = {
+  title: 'Versions',
+  async render(root) {
+    needAgent();
+    const vs = await api(A() + '/versions');
+    const out = [lookFor('A version is one saved prompt plus settings (model, tools). The Auditor tells runs apart by version, so you can see whether a change helped or hurt. Pick two to compare them.')];
+    const act1 = h('button', { class: 'btn primary', type: 'button', text: 'Register a version', onclick: async () => {
+      const v = await formDialog({ title: 'Register a version', intro: 'Record a prompt and settings so runs can be tagged with it. Identical content is the same version.', fields: [{ name: 'label', label: 'Name', required: true, placeholder: 'v2-shorter-answers' }, { name: 'prompt', label: 'Prompt', type: 'textarea' }, { name: 'config', label: 'Settings (JSON)', type: 'textarea', placeholder: '{"model": "gemini-3.5-flash"}' }, { name: 'activate', label: 'Make it the active version', type: 'checkbox' }], submit: 'Register' });
+      if (!v) return;
+      let config = {}; try { config = v.config ? JSON.parse(v.config) : {}; } catch (e) { return toast('The settings are not valid JSON.', true); }
+      act('Version registered.', () => post(A() + '/versions', { label: v.label, prompt: v.prompt || null, config, activate: v.activate }));
+    } });
+    out.push(card({ title: 'Versions of ' + state.agent, actions: [act1], body: table([
+      { label: 'Version', render: (v) => v.label }, { label: 'State', render: (v) => (v.is_active ? badge('ok', 'active') : badge('mute', 'inactive')) }, { label: 'Created', render: (v) => fmt.date(v.created_at) },
+      { label: 'Settings', clip: true, render: (v) => fmt.short(Object.entries(v.config || {}).filter(([k]) => !['features', 'extras', 'tools'].includes(k)).map(([k, x]) => k + ': ' + x).join(', '), 80) },
+      { label: 'Prompt', clip: true, render: (v) => fmt.short(v.prompt || '', 70) }], vs, { onclick: (v) => showVersion(v), empty: 'No versions registered. The chat registers one when it starts.' }) }));
+    if (vs.length >= 2) {
+      const sel = (id, i) => h('select', { class: 'sel', id, 'aria-label': id }, vs.map((v) => h('option', { value: v.label, text: v.label, selected: v === vs[i] })));
+      const a = sel('cmpA', 1), b = sel('cmpB', 0), res = h('div', { class: 'stack' });
+      const run = async () => {
+        res.replaceChildren(loading('Comparing…'));
+        const va = vs.find((v) => v.label === a.value), vb = vs.find((v) => v.label === b.value);
+        try {
+          const c = await api(A() + '/compare?baseline=' + q(a.value) + '&candidate=' + q(b.value) + '&min_samples=10');
+          res.replaceChildren(h('div', { class: 'row' }, h('b', { text: 'Verdict:' }), verdictBadge(c.overall_verdict), h('span', { class: 'muted', text: (c.notes || [])[0] || '' })),
+            table([{ label: 'Check', render: (s) => s.scorer.replace(/_/g, ' ') }, { label: a.value, num: true, render: (s) => fmt.pct(s.baseline_pass_rate) + ' (n=' + s.baseline_n + ')' }, { label: b.value, num: true, render: (s) => fmt.pct(s.candidate_pass_rate) + ' (n=' + s.candidate_n + ')' }, { label: 'Change', num: true, render: (s) => (s.delta == null ? '' : (s.delta > 0 ? '+' : '') + (s.delta * 100).toFixed(1) + ' pts') }, { label: 'Verdict', render: (s) => verdictBadge(s.verdict) }, { label: 'Why', clip: true, render: (s) => s.reason }], c.scorers),
+            h('div', { class: 'sect' }, h('h3', { text: 'Prompt changes' }), (va.prompt || vb.prompt) ? diffEl(va.prompt, vb.prompt) : h('div', { class: 'muted', text: 'Neither version has a prompt.' })));
+        } catch (e) { res.replaceChildren(errorBox(e, run)); }
+      };
+      out.push(h('div', { style: { height: '14px' } }), card({ title: 'Compare two versions', sub: 'Baseline on the left, candidate on the right. Needs quality checks to have been run on both.', actions: [a, h('span', { text: 'vs' }), b, h('button', { class: 'btn primary', type: 'button', text: 'Compare', onclick: run })], body: res }));
+    }
+    root.replaceChildren(...out);
+  },
+};
+function showVersion(v) {
+  const dlg = h('dialog', { 'aria-label': 'Version ' + v.label });
+  dlg.append(h('form', { method: 'dialog' }, h('h2', { text: v.label }), h('dl', { class: 'kv' }, h('dt', { text: 'State' }), h('dd', { text: v.is_active ? 'active' : 'inactive' }), h('dt', { text: 'Created' }), h('dd', { text: fmt.date(v.created_at) }), h('dt', { text: 'Fingerprint' }), h('dd', { class: 'mono', text: v.content_hash.slice(0, 16) })),
+    h('div', { class: 'sect' }, h('h3', { text: 'Prompt' }), h('pre', { class: 'box', text: v.prompt || '(none)' })), h('div', { class: 'sect' }, h('h3', { text: 'Settings' }), h('pre', { class: 'box', text: JSON.stringify(v.config, null, 2) })),
+    h('div', { class: 'row end' }, h('button', { class: 'btn', type: 'submit', text: 'Close' }))));
+  document.body.append(dlg); dlg.showModal(); dlg.addEventListener('close', () => dlg.remove());
+}
+
+views.quality = {
+  title: 'Quality',
+  async render(root) {
+    needAgent();
+    const [sum, scorers] = await Promise.all([api(A() + '/eval-summary?since=' + q(sinceIso())), api('/v1/evals/scorers')]);
+    const out = [lookFor('Quality checks are small automatic tests run on every answer (did it fail, is it empty, is it grounded, does it meet the expected text). The bars show how many answers passed each check, with a 95% range: a short range means we can trust the number.')];
+    const runBtn = h('button', { class: 'btn primary', type: 'button', text: 'Run checks now', onclick: async () => { const r = await act(null, () => post('/v1/evals/run', { agent: state.agent, limit: 500 }), false); if (r) { toast('Checked ' + r.evaluated_runs + ' runs (' + r.scored + ' results).'); refreshView(); } } });
+    if (!sum.versions.length) out.push(emptyState('No quality results yet', 'Run the checks to score the recorded answers.', runBtn));
+    sum.versions.forEach((v) => {
+      const rows = v.scorers.filter((s) => s.n).map((s) => ({ label: s.scorer.replace(/_/g, ' '), value: s.pass_rate || 0, text: fmt.pct(s.pass_rate) + '  (' + s.passed + '/' + s.n + ')', kind: (s.pass_rate || 0) >= 0.9 ? 'ok' : (s.pass_rate || 0) >= 0.7 ? '' : 'bad', tip: ['95% range ' + fmt.pct(s.ci_low) + ' to ' + fmt.pct(s.ci_high)] }));
+      out.push(twinCard({ title: 'Version ' + v.version, sub: v.runs + ' runs, ' + v.evaluated_runs + ' checked', actions: [runBtn.cloneNode(true)].map((b) => { b.addEventListener('click', () => runBtn.click()); return b; }), chart: () => barList(rows, { max: 1, empty: 'No checks apply to these runs.' }),
+        tableEl: () => table([{ label: 'Check', render: (s) => s.scorer.replace(/_/g, ' ') }, { label: 'Passed', num: true, render: (s) => s.passed + '/' + s.n }, { label: 'Rate', num: true, render: (s) => fmt.pct(s.pass_rate) }, { label: '95% range', num: true, render: (s) => fmt.pct(s.ci_low) + ' to ' + fmt.pct(s.ci_high) }], v.scorers.filter((s) => s.n)) }), h('div', { style: { height: '14px' } }));
+    });
+    out.push(card({ title: 'Available checks', body: table([{ label: 'Check', render: (s) => s.name.replace(/_/g, ' ') }, { label: 'What it tests', render: (s) => s.description }, { label: 'Runs by default', render: (s) => (s.default_enabled ? badge('ok', 'yes') : badge('mute', 'only if asked')) }], scorers) }));
+    root.replaceChildren(...out);
+  },
+};
+
+"use strict";
+views.causes = {
+  title: 'Root causes',
+  async render(root) {
+    needAgent();
+    const tax = await taxonomy();
+    const rc = await post(A() + '/root-causes', { environment: 'production', since_hours: winHours(), diagnose_first: true });
+    const out = [lookFor('For every failed run the Auditor picks the most likely cause (a model error, a tool timeout, empty retrieval, a wrong answer, a thumbs-down...). A cause that is common is where one fix helps most. "Strong" evidence means an error pointed straight at it; "weak" means a guess from the symptoms.')];
+    out.push(h('div', { class: 'tiles' }, tile('Runs looked at', fmt.int(rc.total_runs)), tile('Failed', fmt.int(rc.failed_runs), fmt.pct(rc.failure_rate, 1) + ' of runs', rc.failure_rate > 0.1 ? 'bad' : ''), tile('Healthy', fmt.int(rc.healthy_runs), '', 'ok')));
+    if (!rc.causes.length) out.push(emptyState('No failures to explain', 'Every run in this period looks healthy.'));
+    else {
+      out.push(twinCard({ title: 'Causes, most common first', sub: 'Click a bar for what it means and what to change.', chart: () => barList(rc.causes.map((c) => ({ label: fmt.cause(c.cause), value: c.count, kind: 'bad', text: c.count + ' (' + fmt.pct(c.share_of_failures) + ')', onclick: () => causeDetail(c) })), {}),
+        tableEl: () => table([{ label: 'Cause', render: (c) => fmt.cause(c.cause) }, { label: 'Runs', num: true, key: 'count' }, { label: 'Share of failures', num: true, render: (c) => fmt.pct(c.share_of_failures) }, { label: 'Evidence', render: (c) => Object.entries(c.strength).map(([k, n]) => k + ' ' + n).join(', ') }, { label: 'Where', render: (c) => c.top_steps.map((s) => s.name).join(', ') }], rc.causes, { onclick: causeDetail }) }));
+    }
+    const assoc = (rc.version_associations && rc.version_associations.associations) || [];
+    out.push(h('div', { style: { height: '14px' } }), card({ title: 'Is a cause tied to one version?', sub: 'A cause that is much more common in one version than the rest points at a recent change.', body: assoc.length ? table([{ label: 'Version', key: 'version' }, { label: 'Cause', render: (a) => fmt.cause(a.cause) }, { label: 'Direction', render: (a) => (a.direction || '').replace(/_/g, ' ') }, { label: 'In this version', num: true, render: (a) => fmt.pct(a.rate_in_version) }, { label: 'Elsewhere', num: true, render: (a) => fmt.pct(a.rate_elsewhere) }], assoc) : h('div', { class: 'muted', text: (rc.version_associations && rc.version_associations.note) || 'No cause stands out in one version.' }) }));
+    if ((rc.suspect_sources || []).length) out.push(h('div', { style: { height: '14px' } }), card({ title: 'Documents that appear in failing runs', body: table([{ label: 'Source', key: 'source' }, { label: 'In failed runs', num: true, key: 'failed_runs' }, { label: 'Share of failed', num: true, render: (s) => fmt.pct(s.failed_share) }], rc.suspect_sources) }));
+    (rc.notes || []).forEach((n) => out.push(h('p', { class: 'muted', text: n })));
+    out.push(h('div', { style: { height: '14px' } }), card({ title: 'All the causes the Auditor can name', sub: 'Reference list.', body: table([{ label: 'Cause', render: (t) => fmt.cause(t.cause) }, { label: 'Meaning', key: 'meaning' }, { label: 'First thing to try', render: (t) => (t.advice || [])[0] || '' }], Object.values(tax)) }));
+    root.replaceChildren(...out);
+  },
+};
+function causeDetail(c) {
+  const dlg = h('dialog', { 'aria-label': fmt.cause(c.cause) });
+  dlg.append(h('form', { method: 'dialog' }, h('h2', { text: fmt.cause(c.cause) + ' (' + c.count + ' runs)' }), h('p', { text: c.meaning }),
+    h('div', { class: 'sect' }, h('h3', { text: 'What to change' }), h('ul', null, (c.advice || []).map((a) => h('li', { text: a })))),
+    c.top_steps.length ? h('p', { class: 'muted', text: 'Where it happens: ' + c.top_steps.map((s) => s.name + ' (' + s.count + ')').join(', ') }) : null,
+    h('div', { class: 'sect' }, h('h3', { text: 'Example runs' }), h('div', { class: 'pill-row' }, c.example_run_ids.map((id) => h('button', { class: 'btn small', type: 'button', text: id.slice(0, 8), onclick: () => { dlg.close(); openRun(id); } })))),
+    h('div', { class: 'row end' }, h('button', { class: 'btn', type: 'submit', text: 'Close' }))));
+  document.body.append(dlg); dlg.showModal(); dlg.addEventListener('close', () => dlg.remove());
+}
+
+views.drift = {
+  title: 'Drift',
+  async render(root) {
+    needAgent();
+    const hist = await api(A() + '/drift?limit=14').catch(() => []);
+    const out = [lookFor('Drift means the agent is behaving differently from before, even though nobody changed it: slower, longer answers, more errors, different quality. The Auditor compares a recent period with an earlier one and only flags changes that are statistically real.')];
+    const res = h('div', { class: 'stack' });
+    const cur = h('input', { type: 'number', class: 'sel', value: '24', min: '1', style: { width: '90px' }, 'aria-label': 'Recent hours' }), ref = h('input', { type: 'number', class: 'sel', value: '168', min: '2', style: { width: '90px' }, 'aria-label': 'Earlier hours' });
+    const check = async () => {
+      res.replaceChildren(loading('Comparing the two periods…'));
+      try { res.replaceChildren(driftReport(await post('/v1/drift/check', { agent: state.agent, environment: 'production', current_hours: Number(cur.value) || 24, reference_hours: Number(ref.value) || 168, save: true }))); }
+      catch (e) { res.replaceChildren(errorBox(e, check)); }
+    };
+    out.push(card({ title: 'Check for drift', sub: 'Recent period against the period before it.', actions: [h('span', { class: 'muted', text: 'Recent hours' }), cur, h('span', { class: 'muted', text: 'Earlier hours' }), ref, h('button', { class: 'btn primary', type: 'button', text: 'Check now', onclick: check })], body: res }));
+    out.push(h('div', { style: { height: '14px' } }), card({ title: 'Past checks', body: table([{ label: 'When', render: (r) => fmt.date(r.created_at) }, { label: 'Result', render: (r) => verdictBadge(r.overall) }, { label: 'Runs (earlier / recent)', num: true, render: (r) => r.reference_runs + ' / ' + r.current_runs }, { label: 'What changed', render: (r) => (r.flagged || []).join(', ') }], hist, { onclick: async (r) => { res.replaceChildren(loading()); try { res.replaceChildren(driftReport(await api('/v1/drift/reports/' + q(r.id)))); scrollTo(0, 0); } catch (e) { res.replaceChildren(errorBox(e)); } }, empty: 'No saved checks yet.' }) }));
+    root.replaceChildren(...out);
+    if (hist.length) { try { res.replaceChildren(driftReport(await api('/v1/drift/reports/' + q(hist[0].id)))); } catch (e) { /* the button still works */ } } else res.append(h('div', { class: 'muted', text: 'Press Check now.' }));
+  },
+};
+function driftReport(r) {
+  const flagged = r.signals.filter((s) => s.significant);
+  return h('div', { class: 'stack' }, h('div', { class: 'row' }, verdictBadge(r.overall), h('span', { class: 'muted', text: r.reference_runs + ' earlier runs compared with ' + r.current_runs + ' recent ones (' + fmt.date(r.as_of) + ')' })),
+    (r.notes || []).map((n) => h('div', { class: 'muted', text: n })),
+    table([{ label: 'Signal', render: (s) => s.name.replace(/_/g, ' ') }, { label: 'Result', render: (s) => (s.significant ? badge(s.severity === 'major' ? 'bad' : 'warn', s.severity) : badge('ok', 'steady')) }, { label: 'Earlier', clip: true, render: (s) => sigVal(s.reference) }, { label: 'Recent', clip: true, render: (s) => sigVal(s.current) }, { label: 'Why', render: (s) => s.reason }], r.signals.sort((a, b) => Number(b.significant) - Number(a.significant)), { empty: 'Not enough runs to compare.' }),
+    flagged.length ? callout('warn', 'What to do', h('p', { text: 'Open Failures and Root causes for the same period, and look at what changed around the time the signals moved: a new version, a model update, different questions, or a data source.' })) : null);
+}
+const sigVal = (o) => { if (!o) return ''; const e = Object.entries(o).filter(([, v]) => typeof v === 'number' || typeof v === 'string').slice(0, 3); return e.map(([k, v]) => k + ' ' + (typeof v === 'number' ? Math.round(v * 1000) / 1000 : v)).join(', '); };
+
+views.tests = {
+  title: 'Regression tests',
+  async render(root) {
+    needAgent();
+    const [cases, replays] = await Promise.all([api(A() + '/tests?limit=200'), api(A() + '/replays?limit=10').catch(() => [])]);
+    const out = [lookFor('A regression test is a real failure saved as a test: the input that failed plus what a good answer must contain. Before a new version ships, replaying these shows whether the old mistakes come back.')];
+    out.push(card({ title: cases.length + ' test' + (cases.length === 1 ? '' : 's'), actions: [h('button', { class: 'btn primary', type: 'button', text: 'Create from failures', onclick: async () => { await genTests(); refreshView(); } })], body: table([
+      { label: 'On', render: (c) => h('input', { type: 'checkbox', checked: c.enabled, 'aria-label': 'Enabled', onclick: (e) => { e.stopPropagation(); act(null, () => patch('/v1/tests/' + q(c.id), { enabled: e.target.checked }), false); } }) },
+      { label: 'Test', clip: true, render: (c) => c.name }, { label: 'Input', clip: true, render: (c) => fmt.short(fmt.text(c.input), 80) }, { label: 'Must satisfy', clip: true, render: (c) => (c.expectations || []).map((e) => e.type + (e.value ? ' "' + fmt.short(e.value, 24) + '"' : '')).join(', ') },
+      { label: 'Seen', num: true, render: (c) => c.occurrences + '×' }, { label: 'From version', render: (c) => c.origin_version || '' }], cases, { onclick: (c) => testDetail(c), empty: 'No tests yet. Press Create from failures.' }) }));
+    out.push(h('div', { style: { height: '14px' } }), card({ title: 'Replay results', sub: 'Replays run from your agent’s own code, because only your code can call your agent.', body: [table([{ label: 'When', render: (r) => fmt.date(r.created_at) }, { label: 'Version', render: (r) => r.version || '' }, { label: 'Result', render: (r) => verdictBadge(r.verdict) }, { label: 'Summary', render: (r) => Object.entries(r.summary || {}).map(([k, v]) => k + ' ' + v).join(', ') }], replays, { empty: 'No replays yet.' }),
+      h('p', { class: 'muted', text: 'To replay these tests against a version from Python:' }), cmd('aud = Auditor("http://127.0.0.1:8000", agent="' + state.agent + '", api_key=KEY)\nresult = aud.replay_tests(my_agent_function, version="v2")\nprint(result["verdict"])')] }));
+    root.replaceChildren(...out);
+  },
+};
+function testDetail(c) {
+  const dlg = h('dialog', { 'aria-label': 'Test' });
+  dlg.append(h('form', { method: 'dialog' }, h('h2', { text: c.name }), h('div', { class: 'sect' }, h('h3', { text: 'Input' }), h('pre', { class: 'box', text: JSON.stringify(c.input, null, 2) })), h('div', { class: 'sect' }, h('h3', { text: 'A good answer must' }), h('pre', { class: 'box', text: JSON.stringify(c.expectations, null, 2) })),
+    c.reference_output != null ? h('div', { class: 'sect' }, h('h3', { text: 'The answer that failed' }), h('pre', { class: 'box', text: fmt.text(c.reference_output) })) : null,
+    h('div', { class: 'row end' }, c.source_run_id ? h('button', { class: 'btn', type: 'button', text: 'Open the failed run', onclick: () => { dlg.close(); openRun(c.source_run_id); } }) : null, h('button', { class: 'btn', type: 'submit', text: 'Close' }))));
+  document.body.append(dlg); dlg.showModal(); dlg.addEventListener('close', () => dlg.remove());
+}
+
+views.fixes = {
+  title: 'Fixes',
+  async render(root) {
+    needAgent();
+    const out = [lookFor('The Auditor looks at the most common causes of failure and proposes concrete changes: a firmer prompt rule, a longer timeout, a setting. They are only proposals. Register one as a new version, then prove it with a replay before any release.')];
+    const res = h('div', { class: 'stack' });
+    const ai = h('input', { type: 'checkbox', id: 'useai', disabled: !state.assistant.enabled });
+    const go1 = async () => {
+      res.replaceChildren(loading('Reading the failures…'));
+      try { res.replaceChildren(...fixList(await post(A() + '/fixes/propose', { environment: 'production', since_hours: winHours(), use_ai: ai.checked && state.assistant.enabled }))); }
+      catch (e) { res.replaceChildren(errorBox(e, go1)); }
+    };
+    out.push(card({ title: 'Propose fixes for ' + state.agent, actions: [h('label', { class: 'row', title: state.assistant.enabled ? '' : 'Needs ANTHROPIC_API_KEY on the Auditor server' }, ai, h('span', { text: 'Also ask the AI helper' })), h('button', { class: 'btn primary', type: 'button', text: 'Propose fixes', onclick: go1 })], body: res }));
+    root.replaceChildren(...out);
+    go1();
+  },
+};
+function fixList(p) {
+  const out = [];
+  out.push(h('div', { class: 'row' }, badge(p.failed_runs ? 'bad' : 'ok', p.failed_runs + ' failed runs'), h('span', { class: 'muted', text: 'improving version ' + p.base_version.label })));
+  (p.notes || []).forEach((n) => out.push(h('div', { class: 'muted', text: n })));
+  if (!p.candidates.length) out.push(emptyState('No fixes to propose', 'Either nothing failed, or the failures do not have a rule-based fix yet. Open Root causes for manual advice.'));
+  p.candidates.forEach((c) => {
+    out.push(h('article', { class: 'callout info' }, h('div', { class: 'row' }, h('b', { text: c.title }), badge('info', c.kind), c.verifiable ? badge('ok', 'can be replayed') : badge('mute', 'manual check'), c.source === 'ai' ? badge('rec', 'AI draft') : null),
+      h('p', { text: c.rationale }), h('ul', null, (c.changes || []).map((x) => h('li', null, h('b', { text: x.field + ': ' }), (x.from != null ? fmt.short(JSON.stringify(x.from), 60) + ' → ' : '') + fmt.short(typeof x.to === 'string' ? x.to : JSON.stringify(x.to), 140)))),
+      c.prompt ? diffEl(p.base_version.prompt, c.prompt) : null,
+      h('div', { class: 'row' }, h('button', { class: 'btn', type: 'button', text: 'Register as a new version', onclick: () => act('Version registered. It is not active until a release is approved.', () => post(A() + '/versions', { label: (p.base_version.label + '-fix-' + c.id.slice(0, 6)).slice(0, 100), prompt: c.prompt || p.base_version.prompt, config: { ...(p.base_version.config || {}), ...(c.config || {}) }, activate: false }), false) }))));
+  });
+  if (p.candidates.length) out.push(h('div', null, h('p', { class: 'muted', text: 'To prove the fixes work before releasing (replays every regression test against each candidate):' }), cmd('aud = Auditor("http://127.0.0.1:8000", agent="' + state.agent + '", api_key=KEY)\nreport = aud.verify_fixes(build_agent)   # build_agent(prompt=..., config=...) returns your agent function')));
+  return out;
+}
+
+"use strict";
+const whoami = () => store.get('aa.name') || '';
+async function askWho(extra) {
+  return formDialog(extra);
+}
+views.canary = {
+  title: 'Canary',
+  async render(root) {
+    needAgent();
+    const [vs, hist] = await Promise.all([api(A() + '/versions'), api(A() + '/canary?limit=10').catch(() => [])]);
+    const out = [lookFor('A canary sends a small share of real traffic to the new version. The Auditor then compares it with the current one on error rate, quality and speed, and says: safe to continue, hold, or roll back. A verdict needs enough runs on both sides; with too few it says so instead of guessing.')];
+    if (vs.length < 2) { out.push(emptyState('A canary needs two versions', 'Register a second version (a changed prompt or model) and send some traffic through it.', h('button', { class: 'btn primary', type: 'button', text: 'Go to Versions', onclick: () => go('versions') }))); root.replaceChildren(...out); return; }
+    const sel = (i, label) => h('select', { class: 'sel', 'aria-label': label }, vs.map((v) => h('option', { value: v.label, text: v.label + (v.is_active ? ' (active)' : ''), selected: v === (i === 0 ? vs.find((x) => x.is_active) || vs[vs.length - 1] : vs.find((x) => !x.is_active) || vs[0]) })));
+    const base = sel(0, 'Baseline'), cand = sel(1, 'Candidate');
+    const env = (label, v) => h('select', { class: 'sel', 'aria-label': label }, ['production', 'canary', 'test'].map((e) => h('option', { value: e, text: e, selected: e === v })));
+    const be = env('Baseline environment', 'production'), ce = env('Candidate environment', 'production');
+    const minRuns = h('input', { type: 'number', class: 'sel', value: '20', min: '1', style: { width: '80px' }, 'aria-label': 'Minimum runs per side' });
+    const res = h('div', { class: 'stack' });
+    const run = async () => {
+      res.replaceChildren(loading('Comparing…'));
+      const n = Number(minRuns.value) || 20;
+      try { res.replaceChildren(...canaryReport(await post(A() + '/canary/evaluate', { baseline: base.value, candidate: cand.value, baseline_environment: be.value, candidate_environment: ce.value, since_hours: winHours(), evaluate_first: true, diagnose_first: true, save: true, policy: { min_canary_runs: n, min_baseline_runs: n, min_eval_samples: n } }))); }
+      catch (e) { res.replaceChildren(errorBox(e, run)); }
+    };
+    out.push(card({ title: 'Compare a candidate with the current version', sub: 'Your chat runs every model in production, so production for both is right. Use canary only if you send a candidate through the canary environment on purpose. Each model in the chat is its own version, so this compares two models.', body: h('div', { class: 'stack' }, h('div', { class: 'row' }, h('span', { text: 'Baseline' }), base, be, h('span', { text: 'Candidate' }), cand, ce, h('span', { text: 'Min runs' }), minRuns, h('button', { class: 'btn primary', type: 'button', text: 'Evaluate', onclick: run })), res) }));
+    out.push(h('div', { style: { height: '14px' } }), card({ title: 'Past canary checks', body: table([{ label: 'When', render: (r) => fmt.date(r.created_at) }, { label: 'Baseline', key: 'baseline' }, { label: 'Candidate', key: 'candidate' }, { label: 'Verdict', render: (r) => verdictBadge(r.verdict) }, { label: 'Why', clip: true, render: (r) => (r.blocking[0] || r.reasons[0] || '') }], hist, { onclick: async (r) => { res.replaceChildren(loading()); try { res.replaceChildren(...canaryReport(await api('/v1/canary/' + q(r.id)))); scrollTo(0, 0); } catch (e) { res.replaceChildren(errorBox(e)); } }, empty: 'No canary checks saved yet.' }) }));
+    root.replaceChildren(...out);
+  },
+};
+function canaryReport(r) {
+  const kind = { continue: 'warn', promote: 'ok', hold: 'warn', rollback: 'bad' }[r.verdict] || 'info';
+  const out = [h('div', { class: 'verdict ' + (kind === 'ok' ? '' : kind === 'bad' ? 'bad' : 'warn') }, h('div', { class: 'mark', 'aria-hidden': 'true', text: kind === 'ok' ? '✓' : kind === 'bad' ? '✕' : '!' }), h('div', null, h('h2', { text: 'Verdict: ' + String(r.verdict).replace(/_/g, ' ') }), h('p', { text: r.candidate.version + ' (' + r.candidate.runs + ' runs) against ' + r.baseline.version + ' (' + r.baseline.runs + ' runs)' })))];
+  if ((r.blocking || []).length) out.push(callout('bad', 'Blocking', h('ul', null, r.blocking.map((x) => h('li', { text: x })))));
+  if ((r.warnings || []).length) out.push(callout('warn', 'Warnings', h('ul', null, r.warnings.map((x) => h('li', { text: x })))));
+  out.push(table([{ label: 'Check', render: (c) => c.name.replace(/_/g, ' ') }, { label: 'Result', render: (c) => verdictBadge(c.status) }, { label: 'Why', render: (c) => c.reason }], r.checks));
+  if (r.caveat) out.push(h('p', { class: 'muted', text: r.caveat }));
+  return out;
+}
+
+views.releases = {
+  title: 'Releases',
+  async render(root) {
+    needAgent();
+    const [vs, rels] = await Promise.all([api(A() + '/versions'), api(A() + '/releases?limit=15')]);
+    const out = [lookFor('A release is a request to make a new version the live one. It needs the canary evidence to be fresh and at least one person other than the proposer to approve. After promotion you can roll back in one click. Every step is written to the audit log.')];
+    const propose = h('button', { class: 'btn primary', type: 'button', text: 'Propose a release', onclick: async () => {
+      const cands = vs.filter((v) => !v.is_active);
+      if (!cands.length) return toast('Register a second version first.', true);
+      const v = await formDialog({ title: 'Propose a release', intro: 'This does not change what is live. It opens the gate: evidence is checked and approvals are collected first.', fields: [{ name: 'candidate', label: 'Candidate version', type: 'select', options: cands.map((c) => c.label) }, { name: 'name', label: 'Your name', required: true, value: whoami() }, { name: 'approvals', label: 'Approvals needed', type: 'number', value: 1, min: 1, max: 10 }, { name: 'self', label: 'The proposer may approve their own release', type: 'checkbox' }, { name: 'notes', label: 'Why', type: 'textarea' }], submit: 'Propose' });
+      if (!v) return; store.set('aa.name', v.name);
+      act('Release proposed.', () => post(A() + '/releases', { candidate: v.candidate, proposed_by: v.name, notes: v.notes || null, policy: { required_approvals: v.approvals || 1, allow_self_approval: v.self } }));
+    } });
+    out.push(card({ title: 'Releases of ' + state.agent, sub: 'Active version: ' + ((vs.find((v) => v.is_active) || {}).label || 'none'), actions: [propose], body: rels.length ? h('div', { class: 'stack' }, rels.map(releaseCard)) : emptyState('No releases yet', 'Propose one when a new version is ready.') }));
+    root.replaceChildren(...out);
+  },
+};
+function releaseCard(r) {
+  const gate = r.gate, kind = { proposed: 'info', promoted: 'ok', rolled_back: 'bad', rejected: 'bad', cancelled: 'mute' }[r.state] || 'info';
+  const el = h('article', { class: 'callout ' + (r.state === 'proposed' ? 'info' : '') },
+    h('div', { class: 'row' }, h('b', { text: r.candidate }), h('span', { class: 'muted', text: 'replaces ' + (r.baseline || 'nothing') }), verdictBadge(r.state), h('span', { class: 'muted', style: { marginLeft: 'auto' }, text: 'proposed by ' + r.proposed_by + ', ' + fmt.ago(r.created_at) })),
+    r.notes ? h('p', { text: r.notes }) : null, r.recommendation ? h('p', null, h('b', { text: 'Recommendation: ' }), r.recommendation) : null);
+  if (gate) el.append(h('div', { class: 'sect' }, h('h3', { text: 'Gate: ' + (gate.ready ? 'ready to promote' : 'not ready') }), h('ul', null, gate.checks.map((c) => h('li', null, c.passed ? badge('ok', 'pass') : badge('bad', 'fail'), ' ', c.name.replace(/_/g, ' ') + ': ' + c.reason)))));
+  if (r.approvals.length) el.append(h('div', { class: 'sect' }, h('h3', { text: 'Decisions' }), h('ul', null, r.approvals.map((a) => h('li', { text: a.approver + ' ' + a.decision + (a.comment ? ': ' + a.comment : '') + ' (' + fmt.ago(a.created_at) + ')' })))));
+  const row = h('div', { class: 'row' });
+  const decide = async (decision) => {
+    const v = await formDialog({ title: decision === 'approve' ? 'Approve this release' : 'Reject this release', fields: [{ name: 'name', label: 'Your name', required: true, value: whoami() }, { name: 'comment', label: 'Comment', type: 'textarea' }], submit: decision === 'approve' ? 'Approve' : 'Reject', danger: decision !== 'approve' });
+    if (!v) return; store.set('aa.name', v.name);
+    act(decision === 'approve' ? 'Approval recorded.' : 'Release rejected.', () => post('/v1/releases/' + q(r.id) + '/approve', { approver: v.name, decision, comment: v.comment || null }));
+  };
+  if (r.state === 'proposed') {
+    row.append(h('button', { class: 'btn', type: 'button', text: 'Approve', onclick: () => decide('approve') }), h('button', { class: 'btn', type: 'button', text: 'Reject', onclick: () => decide('reject') }),
+      h('button', { class: 'btn primary', type: 'button', text: 'Promote', disabled: gate && !gate.ready, title: gate && !gate.ready ? 'The gate is not ready' : '', onclick: async () => { const v = await formDialog({ title: 'Make ' + r.candidate + ' the active version', intro: 'Live traffic will use this version from now on. You can roll back afterwards.', fields: [{ name: 'name', label: 'Your name', required: true, value: whoami() }], submit: 'Promote' }); if (!v) return; store.set('aa.name', v.name); act(r.candidate + ' is now the active version.', () => post('/v1/releases/' + q(r.id) + '/promote', { actor: v.name })); } }),
+      h('button', { class: 'btn quiet', type: 'button', text: 'Cancel release', onclick: async () => { const v = await formDialog({ title: 'Cancel this release', fields: [{ name: 'name', label: 'Your name', required: true, value: whoami() }, { name: 'reason', label: 'Reason' }], submit: 'Cancel release' }); if (!v) return; act('Release cancelled.', () => post('/v1/releases/' + q(r.id) + '/cancel', { actor: v.name, reason: v.reason || null })); } }));
+  }
+  if (r.state === 'promoted') row.append(h('button', { class: 'btn danger', type: 'button', text: 'Roll back', onclick: async () => { const v = await formDialog({ title: 'Roll back', intro: 'Puts ' + (r.previous_active || 'the previous version') + ' back as the active version.', fields: [{ name: 'name', label: 'Your name', required: true, value: whoami() }, { name: 'reason', label: 'Why are you rolling back?', required: true }], submit: 'Roll back', danger: true }); if (!v) return; act('Rolled back.', () => post('/v1/releases/' + q(r.id) + '/rollback', { actor: v.name, reason: v.reason })); } }));
+  const trail = h('div', { class: 'stack', hidden: true });
+  row.append(h('button', { class: 'btn quiet', type: 'button', text: 'Audit trail', onclick: async () => { trail.hidden = !trail.hidden; if (!trail.hidden) { trail.replaceChildren(loading()); try { const ev = await api('/v1/releases/' + q(r.id) + '/audit'); trail.replaceChildren(table([{ label: 'When', render: (e) => fmt.date(e.created_at) }, { label: 'Who', key: 'actor' }, { label: 'What', key: 'action' }, { label: 'Detail', clip: true, render: (e) => fmt.short(JSON.stringify(e.detail), 100) }], ev)); } catch (e) { trail.replaceChildren(errorBox(e)); } } } }));
+  el.append(row, trail);
+  return el;
+}
+
+"use strict";
+const CHAT = 'chat-agent';
+const benchAgent = () => (state.agent && !/^demo-/.test(state.agent) ? state.agent : CHAT);
+views.benchmark = {
+  title: 'Benchmark',
+  async render(root) {
+    let d;
+    try { d = await api('/v1/insights/benchmark?agent=' + q(benchAgent())); }
+    catch (e) { if (e.status !== 404) throw e; d = { targets: [], advice: [], categories: [], questions: [] }; }
+    const out = [lookFor('The same questions are asked of several AI models and each answer is checked against what a good answer must contain. This shows which model suits your questions, where your current one is weak, and what to change. Small question sets give wide uncertainty ranges: treat gaps under about 10 points as a tie.')];
+    if (!d.targets.length) {
+      out.push(emptyState('No benchmark results yet', 'Run the benchmark from a terminal. It asks every question of each model whose key you have set, and sends the answers here.',
+        cmd('python bench\\run.py                 # every model whose key is in your .env\npython bench\\run.py --quick         # a short set, two questions per topic\npython bench\\run.py --models gemini,openai,anthropic'), h('p', { class: 'muted', text: 'Add keys such as OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, PERPLEXITY_API_KEY to your .env first.' })));
+      root.replaceChildren(...out); return;
+    }
+    if (d.advice.length) out.push(card({ title: 'What to change', sub: 'Plain recommendations from the numbers below.', body: h('div', { class: 'stack' }, d.advice.map((a) => h('div', { class: 'callout ' + (a.severity === 'high' ? 'bad' : a.severity === 'medium' ? 'warn' : 'info') }, h('div', { class: 'row' }, badge(a.severity === 'high' ? 'bad' : a.severity === 'medium' ? 'warn' : 'info', a.area), h('b', { text: a.title })), h('p', { text: a.detail }), h('div', { class: 'muted', text: 'Evidence: ' + a.evidence })))) }), h('div', { style: { height: '14px' } }));
+    out.push(twinCard({ title: 'Leaderboard', sub: 'Share of answers that met their expectation. The line is the 95% range.', chart: () => leaderboard(d.targets),
+      tableEl: () => table([{ label: 'Model', render: (t) => t.target + (t.current ? ' (current)' : '') }, { label: 'Passed', num: true, render: (t) => t.quality.passed + '/' + t.quality.n }, { label: 'Rate', num: true, render: (t) => fmt.pct(t.quality.rate) }, { label: '95% range', num: true, render: (t) => fmt.pct(t.quality.low) + ' to ' + fmt.pct(t.quality.high) }, { label: 'Median time', num: true, render: (t) => fmt.ms(t.p50_ms) }, { label: 'Slowest 5%', num: true, render: (t) => fmt.ms(t.p95_ms) }, { label: 'Errors', num: true, render: (t) => t.errors + '/' + t.questions }, { label: 'Avg words', num: true, render: (t) => (t.avg_words == null ? '' : Math.round(t.avg_words)) }, { label: 'People', render: (t) => '👍 ' + t.feedback.up + '  👎 ' + t.feedback.down }], d.targets) }));
+    out.push(h('div', { style: { height: '14px' } }));
+    if (d.categories.length) out.push(card({ title: 'Where each model is strong or weak', sub: 'Pass rate by kind of question.', body: heat(d) }), h('div', { style: { height: '14px' } }));
+    out.push(card({ title: 'Question by question', sub: 'Click a cell to read the answer and why it passed or failed.', body: questionGrid(d) }));
+    root.replaceChildren(...out);
+  },
+};
+function leaderboard(ts) {
+  const W = 760, rowH = 38, pl = 210, pr = 70, H = ts.length * rowH + 30;
+  const svg = sv('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chart', role: 'img', 'aria-label': 'Pass rate per model with 95 percent ranges' });
+  const x = (v) => pl + (W - pl - pr) * v;
+  [0, 0.25, 0.5, 0.75, 1].forEach((v) => svg.append(sv('line', { x1: x(v), x2: x(v), y1: 4, y2: H - 22, stroke: 'var(--grid)' }), sv('text', { x: x(v), y: H - 6, 'text-anchor': 'middle', 'font-size': 11, fill: 'var(--muted)', text: v * 100 + '%' })));
+  ts.forEach((t, i) => {
+    const y = 8 + i * rowH + rowH / 2, qv = t.quality;
+    const g = sv('g', { tabindex: '0' });
+    g.append(sv('text', { x: pl - 10, y: y + 4, 'text-anchor': 'end', 'font-size': 13, fill: 'var(--ink)', 'font-weight': t.current ? 700 : 400, text: fmt.short(t.target, 28) + (t.current ? ' ★' : '') }));
+    if (qv.n) {
+      g.append(sv('line', { x1: x(qv.low), x2: x(qv.high), y1: y, y2: y, stroke: 'var(--series)', 'stroke-width': 2 }), sv('line', { x1: x(qv.low), x2: x(qv.low), y1: y - 6, y2: y + 6, stroke: 'var(--series)', 'stroke-width': 2 }), sv('line', { x1: x(qv.high), x2: x(qv.high), y1: y - 6, y2: y + 6, stroke: 'var(--series)', 'stroke-width': 2 }),
+        sv('circle', { cx: x(qv.rate), cy: y, r: 6, fill: 'var(--series)', stroke: 'var(--raised)', 'stroke-width': 2 }), sv('text', { x: W - pr + 10, y: y + 4, 'font-size': 13, fill: 'var(--ink)', text: fmt.pct(qv.rate) }));
+    } else g.append(sv('text', { x: pl, y: y + 4, 'font-size': 12, fill: 'var(--muted)', text: 'no answers were checked' }));
+    g.append(sv('rect', { x: 0, y: y - rowH / 2, width: W, height: rowH, fill: 'transparent' }));
+    withTip(g, () => [t.target, [qv.n ? qv.passed + ' of ' + qv.n + ' passed (range ' + fmt.pct(qv.low) + ' to ' + fmt.pct(qv.high) + ')' : 'nothing checked', 'median ' + fmt.ms(t.p50_ms) + ', errors ' + t.errors + '/' + t.questions]]);
+    svg.append(g);
+  });
+  return svg;
+}
+function heat(d) {
+  const grid = h('div', { class: 'heat', style: { gridTemplateColumns: 'minmax(160px,1.2fr) repeat(' + d.categories.length + ', minmax(70px,1fr))' } });
+  grid.append(h('div', { class: 'h', text: 'Model' }), ...d.categories.map((c) => h('div', { class: 'h', text: c })));
+  d.targets.forEach((t) => {
+    grid.append(h('div', { class: 'h', text: t.target }));
+    d.categories.forEach((c) => { const v = t.categories[c]; const r = v && v.rate; grid.append(h('div', { class: 'c ' + (v == null ? 'na' : r >= 0.8 ? 'ok' : r < 0.5 ? 'bad' : 'na'), title: v ? v.passed + '/' + v.n : 'no data', text: v ? fmt.pct(r) : '–', style: v && r >= 0.5 && r < 0.8 ? { background: 'var(--warn-bg)', color: 'var(--warn)' } : {} })); });
+  });
+  return h('div', { class: 'tw' }, grid);
+}
+function questionGrid(d) {
+  const ts = d.targets;
+  const head = ['Question', ...ts.map((t) => t.target)];
+  const tb = h('table', { class: 't' }, h('thead', null, h('tr', null, head.map((x) => h('th', { text: x })))), h('tbody', null, d.questions.map((qn) => h('tr', null, h('td', { class: 'clip', title: qn.question }, h('span', { class: 'badge mute', text: qn.category }), ' ', fmt.short(qn.question, 70)), ts.map((t) => {
+    const r = qn.results[t.version]; if (!r) return h('td', { class: 'muted', text: '–' });
+    const b = r.status === 'error' ? badge('bad', 'error') : r.passed === true ? badge('ok', 'pass') : r.passed === false ? badge('bad', 'fail') : badge('mute', 'unchecked');
+    const td = h('td'); const bt = h('button', { class: 'btn quiet small', type: 'button', onclick: () => answerDialog(qn, t, r) }, b); td.append(bt); return td;
+  })))));
+  return h('div', { class: 'tw' }, tb);
+}
+function answerDialog(qn, t, r) {
+  const dlg = h('dialog', { 'aria-label': 'Answer' });
+  dlg.append(h('form', { method: 'dialog' }, h('h2', { text: t.target }), h('p', { text: qn.question }), r.reason ? callout(r.passed ? 'info' : 'bad', null, h('span', { text: r.reason })) : null, r.error ? h('pre', { class: 'box', style: { color: 'var(--bad)' }, text: r.error }) : h('pre', { class: 'box', text: r.answer || '(no answer)' }),
+    h('div', { class: 'row end' }, h('button', { class: 'btn', type: 'button', text: 'Open the run', onclick: () => { dlg.close(); openRun(r.run_id); } }), h('button', { class: 'btn', type: 'submit', text: 'Close' }))));
+  document.body.append(dlg); dlg.showModal(); dlg.addEventListener('close', () => dlg.remove());
+}
+
+views.gap = {
+  title: 'Gap analysis',
+  async render(root) {
+    const d = await api('/v1/insights/gap-analysis?agent=' + q(CHAT));
+    const out = [lookFor('How the chat app compares, feature by feature, with other assistants people use. The chat reports what it can do; the other columns are a hand-kept checklist, so confirm in the product before you build. Gaps are ranked: features most assistants have first, then the biggest benefit, then the least work.')];
+    if (!d.reported) out.push(callout('warn', 'The chat has not reported its features yet', h('p', { text: 'Start the chat with tracing on (run-all.ps1 does this). It registers its feature list with the Auditor, and this page fills in.' })));
+    out.push(callout('info', 'Checklist dated ' + d.as_of, h('p', { text: d.note }), h('div', { class: 'pill-row' }, d.sources.map((s) => h('a', { href: s.url, target: '_blank', rel: 'noopener noreferrer', text: s.title })))));
+    out.push(h('div', { class: 'tiles', style: { marginTop: '14px' } }, tile('Features the chat has', d.covered + ' of ' + d.total, 'among the ones compared', 'ok'), tile('Gaps to close', String(d.gaps.length), 'most assistants have these', d.gaps.length ? 'bad' : 'ok'), tile('Only here', String(d.unique.length), 'things other assistants do not offer')));
+    out.push(card({ title: 'Build next', sub: 'Ranked by how common the feature is, then benefit, then effort (S small, M medium, L large).', body: d.gaps.length ? table([{ label: 'Feature', render: (g) => h('b', { text: g.name }) }, { label: 'Others with it', num: true, render: (g) => g.others_yes + ' of ' + g.of }, { label: 'Benefit', render: (g) => '★'.repeat(g.impact) + '☆'.repeat(3 - g.impact) }, { label: 'Effort', render: (g) => badge(g.effort === 'S' ? 'ok' : g.effort === 'M' ? 'warn' : 'bad', g.effort) }, { label: 'How', render: (g) => g.how }], d.gaps) : h('div', { class: 'muted', text: 'No gaps against this checklist.' }) }));
+    out.push(h('div', { style: { height: '14px' } }));
+    const groups = [...new Set(d.rows.map((r) => r.group))];
+    const mx = h('table', { class: 'mx' }, h('thead', null, h('tr', null, h('th', { text: 'Feature' }), d.products.map((p) => h('th', { text: p })), h('th', { text: 'This chat' }))));
+    const tb = h('tbody');
+    groups.forEach((g) => { tb.append(h('tr', null, h('td', { colspan: d.products.length + 2, style: { fontWeight: 600, background: 'var(--grid)' }, text: g }))); d.rows.filter((r) => r.group === g).forEach((r) => tb.append(h('tr', { class: r.status === 'gap' ? 'gap' : '' }, h('td', { text: r.name }), d.products.map((p) => { const v = r.values[p]; return h('td', { class: { yes: 'y', no: 'n', partial: 'p', unknown: 'u' }[v], title: v, text: { yes: '✓', no: '–', partial: '◐', unknown: '?' }[v] }); }), h('td', { class: 'us', title: r.ours, text: r.ours === 'yes' ? '✓' : '✕' })))); });
+    mx.append(tb);
+    out.push(card({ title: 'Feature by feature', sub: '✓ has it, ◐ partly, – does not, ? not confirmed. An orange edge marks a gap.', body: h('div', { class: 'tw' }, mx) }));
+    out.push(h('div', { style: { height: '14px' } }), card({ title: 'What only this setup offers', body: h('ul', null, d.unique.map((u) => h('li', null, h('b', { text: u.name + '. ' }), u.detail))) }));
+    root.replaceChildren(...out);
+  },
+};
+
+"use strict";
+views.audit = {
+  title: 'Audit log',
+  async render(root) {
+    const f = { prefix: '' }, body = h('div', { class: 'stack' });
+    root.replaceChildren(lookFor('Every change the Auditor makes or is asked to make is written here: versions registered, tests created, releases approved, promoted or rolled back, thumbs given. It is append-only, so it answers who did what, and when.'), body);
+    const draw = async () => {
+      const sel = h('select', { class: 'sel', 'aria-label': 'Kind of event', onchange: (e) => { f.prefix = e.target.value; draw(); } }, [['', 'All events'], ['release', 'Releases'], ['version', 'Versions'], ['test', 'Tests'], ['run', 'Runs and feedback'], ['eval', 'Quality checks'], ['canary', 'Canary']].map(([v, l]) => h('option', { value: v, text: l, selected: v === f.prefix })));
+      body.replaceChildren(sel, loading());
+      try { const ev = await api('/v1/audit?limit=200' + (f.prefix ? '&action_prefix=' + f.prefix : '')); body.replaceChildren(sel, card({ title: ev.length + ' events', body: table([{ label: 'When', render: (e) => fmt.date(e.created_at) }, { label: 'Who', key: 'actor' }, { label: 'Action', render: (e) => e.action }, { label: 'On', render: (e) => e.entity_type + ' ' + e.entity_id.slice(0, 8) }, { label: 'Detail', clip: true, render: (e) => fmt.short(JSON.stringify(e.detail), 120) }], ev, { empty: 'No events yet.' }) })); }
+      catch (e) { body.replaceChildren(sel, errorBox(e, draw)); }
+    };
+    draw();
+  },
+};
+
+/* ---------- setup / connect ---------- */
+const checkRow = (ok, title, detail, action) => h('div', { class: 'row', style: { padding: '8px 0', borderBottom: '1px solid var(--grid)' } }, ok === true ? badge('ok', 'ok') : ok === false ? badge('bad', 'problem') : badge('warn', 'optional'), h('div', { style: { flex: 1, minWidth: '240px' } }, h('b', { text: title }), h('div', { class: 'muted', text: detail })), action || null);
+views.setup = {
+  title: 'Setup',
+  async render(root) {
+    const out = [lookFor('This page checks that everything is wired together and tells you exactly what to fix. Green means working.')];
+    const rows = h('div'); const checks = [];
+    let health = null, keyState = 'unknown', agents = [], chat = null, assistant = { enabled: false }, overview = null;
+    try { health = await (await fetch('/healthz', { cache: 'no-store' })).json(); } catch (e) { health = null; }
+    try { await api('/v1/health'); keyState = 'ok'; } catch (e) { keyState = e.auth ? 'rejected' : e.network ? 'offline' : 'error'; }
+    if (keyState === 'ok') {
+      agents = await api('/v1/agents').catch(() => []);
+      assistant = await api('/v1/assistant/status').catch(() => ({ enabled: false }));
+      chat = await api('/v1/runs?agent=chat-agent&limit=1').catch(() => []);
+      overview = await api('/v1/insights/overview?hours=168').catch(() => null);
+    }
+    checks.push(checkRow(!!health, 'The Auditor server is running', health ? 'Version ' + health.version + ' at ' + location.origin : 'Cannot reach ' + location.origin + '. Start it with run-all.ps1.'));
+    checks.push(checkRow(keyState === 'ok', 'The API key works', { ok: 'The key you entered is accepted (or the server needs none).', rejected: 'The server rejected the key. Use the AUDITOR_API_KEY value from your .env file. If you changed it, restart the server so it picks up the new value.', offline: 'Cannot check: the server is not reachable.', error: 'The server answered with an error. Look at the server window.', unknown: '' }[keyState]));
+    checks.push(checkRow(keyState === 'ok' ? agents.length > 0 : null, 'Agents are reporting', agents.length ? agents.map((a) => a.name).join(', ') : 'No agent has sent a run yet. Start the chat with run-all.ps1, or load demo data below.'));
+    checks.push(checkRow(keyState === 'ok' ? !!(chat && chat.length) : null, 'The chat app is connected', chat && chat.length ? 'Last chat turn ' + fmt.ago(chat[0].started_at) : 'No runs from chat-agent yet. In the chat window, the bottom-left badge says "Recording to Auditor" when it is connected. Ask it something.'));
+    checks.push(checkRow(keyState === 'ok' ? assistant.enabled : null, 'The AI helper in this dashboard', assistant.enabled ? 'On (' + assistant.model + ').' : 'Off. Optional. Set ANTHROPIC_API_KEY where the Auditor server runs to let it explain pages and suggest fixes. The word list in Ask for help works without it.'));
+    if (overview) checks.push(checkRow(overview.unevaluated === 0, 'Runs are scored', overview.unevaluated ? overview.unevaluated + ' runs have not been checked yet.' : 'Every run has been checked.', overview.unevaluated ? h('button', { class: 'btn small', type: 'button', text: 'Score now', onclick: scoreNow }) : null));
+    rows.append(...checks);
+    out.push(card({ title: 'Connection check', actions: [h('button', { class: 'btn', type: 'button', text: 'Check again', onclick: () => refreshView() })], body: rows }));
+    out.push(h('div', { style: { height: '14px' } }));
+    const key = h('input', { type: 'password', class: 'sel', style: { width: 'min(420px,100%)' }, placeholder: 'Paste AUDITOR_API_KEY', 'aria-label': 'API key', value: store.sget('aa.key') || '', autocomplete: 'off' });
+    out.push(card({ title: 'API key', sub: 'It lives in the .env file next to the project (AUDITOR_API_KEY). It is kept only in this browser tab, never saved to disk by this page.', body: h('div', { class: 'row' }, key, h('button', { class: 'btn primary', type: 'button', text: 'Save and test', onclick: async () => { store.sset('aa.key', key.value.trim() || null); await loadAgents(); refreshView(); } }), h('button', { class: 'btn quiet', type: 'button', text: 'Forget key', onclick: () => { store.sset('aa.key', null); refreshView(); } })) }));
+    out.push(h('div', { style: { height: '14px' } }), h('div', { class: 'grid g2' },
+      card({ title: 'Start everything (Windows)', body: h('div', { class: 'stack' }, cmd('powershell -ExecutionPolicy Bypass -File .\\run-all.ps1'), h('p', { class: 'muted', text: 'Starts this server and the chat together, opens both in your browser, and signs this dashboard in for you. Add -Check to also run the 23-point self-check, or -Test to run the unit tests.' })) }),
+      card({ title: 'Compare other AI models', body: h('div', { class: 'stack' }, h('p', { class: 'muted', text: 'Add any of these keys to .env, restart, then use Compare models in the chat or run the benchmark:' }), cmd('OPENAI_API_KEY=...        # ChatGPT models\nANTHROPIC_API_KEY=...     # Claude\nGEMINI_API_KEY=...        # Gemini\nPERPLEXITY_API_KEY=...    # Perplexity (searches the web itself)\nDEEPSEEK_API_KEY=...  MISTRAL_API_KEY=...  XAI_API_KEY=...'), h('p', { class: 'muted', text: 'Microsoft Copilot and Blackbox do not offer a standard chat API; they appear in the Gap analysis checklist instead. Any service with an OpenAI-style API works through CHAT_PROVIDER=custom.' })) })));
+    out.push(h('div', { style: { height: '14px' } }), card({ title: 'Demo data', sub: 'A made-up support bot with two versions, failures of several kinds, and a version that is worse than the other. Useful to see every page working.', body: h('div', { class: 'row' }, h('button', { class: 'btn', type: 'button', text: 'Load demo data', onclick: () => seedDemo() }), h('a', { href: '/docs', target: '_blank', rel: 'noopener noreferrer', text: 'Open the API reference' })) }));
+    root.replaceChildren(...out);
+  },
+};
+
+/* ---------- demo data ---------- */
+async function seedDemo() {
+  const ok = await confirmDialog('Load demo data', 'This adds an agent called demo-support-bot with about 140 made-up runs. It changes nothing else.', 'Load it');
+  if (!ok) return;
+  try {
+    toast('Loading demo data…');
+    const name = 'demo-support-bot', rnd = mulberry(42), pick = (a) => a[Math.floor(rnd() * a.length)];
+    const P1 = 'You are a support assistant for an online shop. Answer using the policy documents. Be brief.';
+    const P2 = 'You are a support assistant for an online shop. Answer in one sentence. Do not check the policy documents unless asked.';
+    await post('/v1/agents', { name, description: 'Made-up support bot for the demo' });
+    await post('/v1/agents/' + name + '/versions', { label: 'v1', prompt: P1, config: { model: 'demo-model-a', temperature: 0.2 }, activate: true });
+    await post('/v1/agents/' + name + '/versions', { label: 'v2', prompt: P2, config: { model: 'demo-model-a', temperature: 0.7 }, activate: false });
+    const QA = [['What is the refund window?', 'You can return items within 30 days.', '30 days'], ['How long does shipping take?', 'Standard shipping takes 3 to 5 business days.', 'business days'], ['Can I change my delivery address?', 'Yes, before the order ships, from your account page.', 'before'], ['Do you ship abroad?', 'Yes, to over 40 countries.', 'countries'], ['How do I reset my password?', 'Use the Forgot password link on the sign-in page.', 'Forgot password'], ['Is gift wrapping available?', 'Yes, for a small fee at checkout.', 'checkout']];
+    const wrong = { 'What is the refund window?': 'Refunds are possible within 14 days.' };
+    const now = Date.now(), runs = [];
+    const mk = (version, env, tms, bad) => {
+      const [qq, good, must] = pick(QA); const lat = 700 + rnd() * 500 + (bad ? 900 : 0);
+      const t0 = new Date(tms), step = (i, ms) => new Date(tms + ms * i).toISOString();
+      const v2 = version === 'v2', rate = v2 ? 0.42 : bad ? 0.28 : 0.08;
+      const kind = rnd() < rate ? (v2 ? pick(['wrong', 'wrong', 'wrong', 'empty', 'ratelimit']) : pick(['ratelimit', 'ratelimit', 'timeout', 'empty', 'wrong'])) : 'ok';
+      let status = 'ok', error = null, answer = good, steps = [{ name: 'search_policy', kind: 'retrieval', input: qq, output: [{ source: 'policy.md', text: good + ' This is our standard policy for all customers.' }], status: 'ok', attributes: { num_docs: 3, scores: [0.82, 0.6, 0.4], sources: ['policy.md'] }, started_at: t0.toISOString(), ended_at: step(1, 200) }, { name: 'model_call', kind: 'llm', input: qq, output: good, status: 'ok', attributes: { model: 'demo-model-a' }, started_at: step(1, 200), ended_at: new Date(tms + lat).toISOString() }];
+      if (kind === 'ratelimit') { status = 'error'; error = '429 Too Many Requests: rate limit exceeded for model demo-model-a'; answer = null; steps[1] = { ...steps[1], status: 'error', error, output: null }; }
+      if (kind === 'timeout') { status = 'error'; error = 'Timeout after 10s calling search_policy'; answer = null; steps[0] = { ...steps[0], status: 'error', error, output: null, attributes: {} }; steps = [steps[0]]; }
+      if (kind === 'empty') { answer = 'I could not find that in our documents.'; steps[0] = { ...steps[0], attributes: { num_docs: 0, scores: [] } }; }
+      if (kind === 'wrong') answer = wrong[qq] || 'I think that depends, please contact us.';
+      return { agent: name, version, environment: env, input: qq, output: answer, status, error, started_at: t0.toISOString(), ended_at: new Date(tms + lat).toISOString(), tags: { demo: true, expect: [{ type: 'output_contains', value: must }] }, steps };
+    };
+    for (let i = 0; i < 95; i++) { const age = rnd() * 7 * 24 * 3600e3, recent = age < 24 * 3600e3; runs.push(mk('v1', 'production', now - age, recent)); }
+    for (let i = 0; i < 45; i++) runs.push(mk('v2', 'canary', now - rnd() * 12 * 3600e3, true));
+    for (let i = 0; i < runs.length; i += 10) await Promise.all(runs.slice(i, i + 10).map((r) => post('/v1/runs', r)));
+    await post('/v1/evals/run', { agent: name, limit: 500 });
+    await post('/v1/agents/' + name + '/diagnose', { limit: 500 }).catch(() => null);
+    await loadAgents(); selectAgent(name, 'overview'); toast('Demo data loaded. Look at Failures, Drift and Canary.');
+  } catch (e) { toast('Could not load demo data: ' + e.message, true); }
+}
+function mulberry(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+"use strict";
+const NAV = [
+  ['Watch', [['overview', 'Overview'], ['failures', 'Failures'], ['runs', 'Runs']]],
+  ['Understand', [['quality', 'Quality'], ['causes', 'Root causes'], ['drift', 'Drift']]],
+  ['Improve', [['versions', 'Versions'], ['tests', 'Regression tests'], ['fixes', 'Fixes'], ['benchmark', 'Benchmark'], ['gap', 'Gap analysis']]],
+  ['Ship safely', [['canary', 'Canary'], ['releases', 'Releases']]],
+  ['Govern', [['audit', 'Audit log'], ['setup', 'Setup']]],
+];
+const TITLES = Object.fromEntries(NAV.flatMap(([, l]) => l));
+let renderToken = 0;
+
+function go(name) { if (location.hash === '#/' + name) refreshView(); else location.hash = '#/' + name; }
+function currentView() { const m = location.hash.match(/^#\/([a-z-]+)/); return m && views[m[1]] ? m[1] : 'overview'; }
+function selectAgent(name, view) { state.agent = name || null; store.set('aa.agent', name || ''); drawChrome(); if (view) go(view); else refreshView(); }
+function refreshView() { renderView(); }
+
+async function renderView() {
+  const name = currentView(), token = ++renderToken, root = $('#view');
+  state.view = name; hideTip(); closeDrawer(); drawChrome();
+  root.replaceChildren(loading());
+  document.title = TITLES[name] + ' – Agent Auditor';
+  try {
+    const p = views[name].render(root);
+    await p;
+    if (token === renderToken) { root.setAttribute('aria-busy', 'false'); const note = testDataNote(); if (note) root.prepend(note); }
+  } catch (e) {
+    if (token !== renderToken) return;
+    root.replaceChildren(errorBox(e, refreshView));
+    if (e.auth && name !== 'setup') root.append(h('p', { class: 'muted', text: 'Tip: run-all.ps1 opens this page already signed in. If you started the server yourself, paste the key in Setup.' }));
+  }
+}
+
+async function loadAgents() {
+  try {
+    state.agents = await api('/v1/agents'); state.needKey = false;
+    state.assistant = await api('/v1/assistant/status').catch(() => ({ enabled: false }));
+    if (!state.agent || (state.agent && !state.agents.some((a) => a.name === state.agent))) {
+      const pref = state.agents.find((a) => a.name === 'chat-agent') || state.agents[0];
+      state.agent = pref ? pref.name : null;
+    }
+    api('/v1/insights/overview?hours=24' + (state.agent ? '&agent=' + q(state.agent) : '')).then((o) => { state.failures = o.problem_runs; drawNavCounts(); }).catch(() => {});
+  } catch (e) { state.agents = []; state.needKey = !!e.auth; state.netErr = e.network ? e : null; }
+  drawChrome();
+}
+
+const isTestAgent = (n) => /^(demo|validation)-/.test(n || '');
+function agentOptions() {
+  const opt = (a) => h('option', { value: a.name, text: a.name, selected: a.name === state.agent });
+  const real = state.agents.filter((a) => !isTestAgent(a.name)), test = state.agents.filter((a) => isTestAgent(a.name));
+  return [...real.map(opt), test.length ? h('optgroup', { label: 'Test data (not your chat)' }, test.map(opt)) : null];
+}
+function testDataNote() {
+  if (!isTestAgent(state.agent)) return null;
+  const real = state.agents.find((a) => a.name === 'chat-agent');
+  return h('div', { class: 'testnote', role: 'note' }, h('span', { text: 'This is test data from the self-check or demo, so its failures are made on purpose. Your own chat is “chat-agent”.' }),
+    real ? h('button', { class: 'btn small', type: 'button', text: 'Show chat-agent', onclick: () => selectAgent('chat-agent') }) : null);
+}
+function drawNavCounts() { const c = $('#navFailures'); if (c) { c.textContent = state.failures || ''; c.hidden = !state.failures; } }
+function drawChrome() {
+  const rail = $('#rail'), cur = state.view;
+  rail.replaceChildren(h('div', { class: 'brand' }, h('i'), 'Agent Auditor'));
+  NAV.forEach(([g, items]) => {
+    rail.append(h('div', { class: 'grp', text: g }));
+    items.forEach(([id, label]) => rail.append(h('a', { class: 'nav', href: '#/' + id, 'aria-current': id === cur ? 'page' : null, onclick: () => document.body.classList.remove('nav') }, label, id === 'failures' ? h('span', { class: 'cnt', id: 'navFailures', hidden: !state.failures, text: state.failures || '' }) : null)));
+  });
+  rail.append(h('div', { class: 'spacer' }), h('div', { class: 'foot' }, h('a', { href: 'http://127.0.0.1:8001', target: '_blank', rel: 'noopener noreferrer', text: 'Open the chat app' }), h('a', { href: '/docs', target: '_blank', rel: 'noopener noreferrer', text: 'API reference' }), h('span', { text: 'Key: ' + (store.sget('aa.key') ? 'entered in this tab' : state.needKey ? 'needed' : 'not needed or not entered') })));
+  const top = $('#top');
+  const agentSel = h('select', { class: 'sel', 'aria-label': 'Agent', onchange: (e) => selectAgent(e.target.value) }, h('option', { value: '', text: 'All agents', selected: !state.agent }), ...agentOptions());
+  const winSel = h('select', { class: 'sel', 'aria-label': 'Time period', onchange: (e) => { state.win = e.target.value; store.set('aa.win', state.win); refreshView(); } }, Object.entries(WINDOWS).map(([k, [l]]) => h('option', { value: k, text: 'Last ' + l, selected: k === state.win })));
+  const dark = (document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
+  top.replaceChildren(h('button', { class: 'btn', id: 'menu', type: 'button', 'aria-label': 'Menu', text: 'Menu', onclick: () => document.body.classList.toggle('nav') }), h('h1', { text: TITLES[cur] || 'Overview' }), agentSel, winSel,
+    h('button', { class: 'btn', type: 'button', text: 'Refresh', onclick: refreshView }), h('button', { class: 'btn quiet', type: 'button', text: dark ? 'Light' : 'Dark', onclick: toggleTheme }));
+}
+function toggleTheme() { const dark = (document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark'; const n = dark ? 'light' : 'dark'; document.documentElement.dataset.theme = n; store.set('aa.theme', n); drawChrome(); }
+
+/* ---------- Ask for help ---------- */
+const GLOSSARY = [
+  ['Run', 'One question going in and one answer coming out, with every step the agent took in between.'], ['Trace', 'The recorded steps of a run: model calls, tool calls, searches, with how long each took.'], ['Version', 'A saved prompt plus settings. Runs are tagged with the version that produced them.'],
+  ['Quality check', 'An automatic test on an answer: did it fail, is it empty, is it supported by the documents, does it contain what it should.'], ['Root cause', 'The most likely reason a run failed, such as a model error, a tool timeout, empty retrieval or a wrong answer.'], ['Drift', 'The agent behaving differently from before (slower, more errors, different quality) without anyone changing it.'],
+  ['Regression test', 'A real failure saved as a test, so it cannot quietly come back.'], ['Canary', 'Trying a new version on a small share of traffic and comparing it with the current one before switching.'], ['Release gate', 'The checks and human approvals a new version must pass before it becomes the live one.'],
+  ['Rollback', 'Putting the previous version back as the live one.'], ['95% range', 'The span that very likely contains the true rate. A short span means a trustworthy number; a long one means too few answers.'], ['Benchmark', 'The same questions asked of several models, each answer checked.'], ['Gap analysis', 'A comparison of the chat’s features with other assistants, ranked by what to build next.'], ['Tape', 'The strip of recent runs on the Overview: orange ticks are failures, taller means slower.'],
+];
+const HELP_LEVELS = [
+  ['Beginner', ['What is this dashboard?', 'Which agent should I look at?', 'Why are there so many failures?', 'What does the Failures page show?']],
+  ['Intermediate', ['How do I fix a failed run?', 'What is a canary?', 'Why does the chat say 429 or quota?', 'How do failures get into the dashboard?']],
+  ['Advanced', ['How does scoring and diagnosis work?', 'How do I reduce failures?', 'How do releases and approvals work?', 'What can I do with the API?']],
+];
+let helpOpen = false; const helpHistory = [];
+/* A tiny markdown reader built from DOM nodes only: paragraphs, "- " bullets, **bold** and `code`. */
+function inlineMd(text) {
+  const out = []; const re = /(\*\*[^*]+\*\*|`[^`]+`)/g; let last = 0, m;
+  while ((m = re.exec(text))) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    out.push(m[0][0] === '*' ? h('b', { text: m[0].slice(2, -2) }) : h('code', { text: m[0].slice(1, -1) }));
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+function renderMd(text) {
+  const box = h('div', { class: 'md' }); let list = null;
+  String(text).split('\n').forEach((raw) => {
+    const line = raw.trimEnd(), b = line.match(/^\s*[-*] (.*)$/);
+    if (b) { if (!list) { list = h('ul'); box.append(list); } list.append(h('li', null, ...inlineMd(b[1]))); return; }
+    list = null; if (line.trim()) box.append(h('p', null, ...inlineMd(line)));
+  });
+  return box;
+}
+function toggleHelp() {
+  const old = $('#help'); if (old) { old.remove(); helpOpen = false; return; }
+  helpOpen = true;
+  const a = state.assistant || {}, ai = !!a.enabled;
+  const log = h('div', { class: 'bd', role: 'log', 'aria-live': 'polite' });
+  const input = h('textarea', { rows: '1', placeholder: 'Ask anything about this dashboard…', 'aria-label': 'Your question', maxlength: '1000' });
+  const send = h('button', { class: 'btn primary', type: 'submit', text: 'Send' });
+  let busy = false;
+  const bubble = (role, content, source) => {
+    const el = h('div', { class: 'm' + (role === 'user' ? ' me' : '') });
+    if (role === 'user') el.textContent = content; else el.append(renderMd(content));
+    if (source) el.append(h('div', { class: 'src', text: source === 'guide' ? 'From the built-in guide' : 'Answered by ' + source }));
+    log.append(el); log.scrollTop = log.scrollHeight; return el;
+  };
+  const words = () => {
+    bubble('assistant', '**Words used in this dashboard**\n' + GLOSSARY.map(([w, d]) => '- **' + w + ':** ' + d).join('\n'));
+  };
+  const welcome = () => {
+    log.replaceChildren();
+    bubble('assistant', 'Hi! Ask me anything about this dashboard, from "what is a run?" to "how do I stop timeouts?". Pick a question below or type your own.\n' +
+      (ai ? '- AI answers are on (' + (a.providers || []).join(', ') + ').' : '- I am answering from the built-in guide. For free-form AI answers, add a free `GEMINI_API_KEY` to `.env` and restart.'));
+  };
+  const ask = async (question) => {
+    question = (question || '').trim(); if (!question || busy) return;
+    busy = true; send.disabled = true; input.value = ''; bubble('user', question);
+    const wait = h('div', { class: 'm', text: 'Thinking…' }); log.append(wait); log.scrollTop = log.scrollHeight;
+    try {
+      const r = await post('/v1/assistant/ask', { question, context: { view: state.view, agent: state.agent, period: state.win, failed_runs: state.failures },
+        history: helpHistory.slice(-6).map((t) => ({ role: t.role, content: t.content.slice(0, 1900) })) });
+      wait.remove(); bubble('assistant', r.answer, r.source || 'guide');
+      helpHistory.push({ role: 'user', content: question }, { role: 'assistant', content: r.answer });
+    } catch (err) { wait.remove(); bubble('assistant', 'I could not answer: ' + (err.message || 'unknown error') + '. Check that the server is running, then try again.'); }
+    busy = false; send.disabled = false; input.focus();
+  };
+  const chips = h('div', { class: 'chips' }, HELP_LEVELS.map(([lvl, qs]) => h('details', { class: 'lvl', open: lvl === 'Beginner' }, h('summary', { text: lvl }),
+    h('div', { class: 'row' }, qs.map((x) => h('button', { type: 'button', class: 'chip', text: x, onclick: () => ask(x) }))))),
+    h('button', { type: 'button', class: 'chip', text: 'Words used here', onclick: words }));
+  const form = h('form', { onsubmit: (e) => { e.preventDefault(); ask(input.value); } }, input, send);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(input.value); } });
+  input.addEventListener('input', () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 110) + 'px'; });
+  const panel = h('div', { id: 'help', role: 'dialog', 'aria-label': 'Ask for help' },
+    h('header', null, h('h2', { text: 'Ask for help' }),
+      h('button', { class: 'btn quiet small', type: 'button', text: 'Clear', onclick: () => { helpHistory.length = 0; welcome(); } }),
+      h('button', { class: 'btn quiet small', type: 'button', text: 'Close', onclick: toggleHelp })), log, chips, form);
+  panel.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleHelp(); });
+  welcome(); document.body.append(panel); input.focus();
+}
+
+/* ---------- boot ---------- */
+(function boot() {
+  const bm = document.getElementById('bootmsg'); if (bm) bm.remove();
+  // run-all.ps1 opens the page as /dashboard#key=...: keep the key for this tab only, then remove it from the address bar
+  const m = location.hash.match(/[#&]key=([^&]+)/);
+  if (m) { store.sset('aa.key', decodeURIComponent(m[1])); history.replaceState(null, '', location.pathname + '#/overview'); }
+  const th = store.get('aa.theme'); if (th) document.documentElement.dataset.theme = th;
+  document.body.append(h('nav', { id: 'rail', 'aria-label': 'Sections' }), h('div', { id: 'main' }, h('header', { id: 'top' }), h('main', { id: 'view', tabindex: '-1' })), h('div', { id: 'toasts', 'aria-live': 'polite' }), tip,
+    h('button', { id: 'helpFab', type: 'button', text: 'Ask for help', onclick: toggleHelp }));
+  addEventListener('hashchange', renderView);
+  addEventListener('keydown', (e) => { if (e.key === '?' && !/INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName || '')) toggleHelp(); });
+  setInterval(() => { if (document.hidden || $('#drawer') || document.querySelector('dialog[open]') || !['overview', 'failures'].includes(state.view)) return; refreshView(); }, 30000);
+  loadAgents().then(() => { if (state.needKey && currentView() !== 'setup') { location.hash = '#/setup'; return; } if (!location.hash.startsWith('#/')) location.hash = '#/overview'; else renderView(); });
+  drawChrome();
+})();
+
+</script>
+</body>
+</html>

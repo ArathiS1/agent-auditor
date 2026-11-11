@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Documentation | Agent Auditor</title>
+<meta name="description" content="Agent Auditor is an alpha open-source reliability layer for AI agents. This page gets you running; the pages on the left go deeper.">
+<meta name="theme-color" content="#13211c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23c4350a'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar"><div class="wrap">
+  <a class="brand" href="../index.html"><span class="dot"></span>Agent Auditor</a>
+  <nav aria-label="Main">
+    <a href="../index.html#loop">How it works</a>
+    <a href="../index.html#verdict">Real result</a>
+    <a href="index.html" aria-current="page">Docs</a>
+    <a class="gh" href="https://github.com/ArathiS1/agent-auditor">GitHub</a>
+  </nav>
+</div></header>
+<div class="wrap docs">
+  <aside class="side" aria-label="Documentation">
+    <h4>Documentation</h4>
+    <a href="index.html" aria-current="page">Overview</a>
+    <a href="reference.html">Reference</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="deployment.html">Deployment</a>
+    <a href="case-study.html">Case study</a>
+    <a class="ext" href="https://github.com/ArathiS1/agent-auditor">Source on GitHub</a>
+  </aside>
+  <main class="art" id="main">
+<h1 id="documentation">Documentation</h1>
+<p>Agent Auditor is an alpha open-source reliability layer for AI agents. This page gets you running; the pages on the left go deeper.</p>
+<h2 id="quick-start">Quick start</h2>
+<p>You need Python 3.11 or newer. The core needs no API key.</p>
+<pre><code>git clone https://github.com/ArathiS1/agent-auditor
+cd agent-auditor
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -e .
+agent-auditor demo
+</code></pre>
+<p><code>agent-auditor demo</code> starts the dashboard with made-up sample data (a support bot with a bad afternoon, a good candidate and a bad one) and opens it in your browser. Nothing is saved. You can also <a href="https://github.com/ArathiS1/agent-auditor/blob/main/demo/">click through a hosted copy</a>.</p>
+<p>To run it for real with your own database, use <code>agent-auditor serve</code>.</p>
+<p>On Windows, <code>powershell -ExecutionPolicy Bypass -File .\run-all.ps1</code> starts the Auditor and the chat app together. Add <code>-Check</code> to run a 23-point self-check.</p>
+<h2 id="use-it-with-your-own-agent">Use it with your own agent</h2>
+<pre><code class="language-python">from agent_auditor.sdk import Auditor
+
+auditor = Auditor(&quot;http://127.0.0.1:8000&quot;, agent=&quot;support-bot&quot;)
+auditor.register_version(&quot;v1&quot;, prompt=PROMPT, config={&quot;top_k&quot;: 4})
+
+@auditor.observe(kind=&quot;retrieval&quot;)
+def kb_search(q): ...
+
+@auditor.observe_run()
+def answer(question): ...
+</code></pre>
+<p>Plain Python and LangGraph/LangChain are supported. See <code>examples/quickstart_plain.py</code> and <code>examples/langgraph_demo.py</code> in the repository.</p>
+<h2 id="the-dashboard">The dashboard</h2>
+<p>Open <code>/dashboard</code>. Fifteen pages, grouped by what you are trying to do.</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Pages</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Watch</td>
+<td>Overview, Failures, Runs</td>
+</tr>
+<tr>
+<td>Understand</td>
+<td>Quality, Root causes, Drift</td>
+</tr>
+<tr>
+<td>Improve</td>
+<td>Versions, Regression tests, Fixes, Benchmark, Gap analysis</td>
+</tr>
+<tr>
+<td>Ship safely</td>
+<td>Canary, Releases</td>
+</tr>
+<tr>
+<td>Govern</td>
+<td>Audit log, Setup</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="where-to-read-next">Where to read next</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Page</th>
+<th>What is in it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="reference.html">Reference</a></td>
+<td>Every phase in detail: evals, drift, failure-to-test, root causes, canary, releases, attribution</td>
+</tr>
+<tr>
+<td><a href="architecture.html">Architecture</a></td>
+<td>How the pieces fit together</td>
+</tr>
+<tr>
+<td><a href="deployment.html">Deployment</a></td>
+<td>Docker, PostgreSQL and secrets</td>
+</tr>
+<tr>
+<td><a href="case-study.html">Case study</a></td>
+<td>Agent Auditor watching its own chat agent, including what did not work</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="known-limitations">Known limitations</h2>
+<ul>
+<li>Alpha software. It has run on one machine and is not proven under production load.</li>
+<li>Built-in scorers detect symptoms (errors, latency, empty answers), not whether an answer is factually right.</li>
+<li>Approver names are self-asserted behind one shared API key. Promotion marks a version active; it deploys nothing.</li>
+<li>Replay needs an agent that can be called again with the stored inputs.</li>
+<li>The AI helper can be wrong, so decisions stay with a person.</li>
+<li>The PostgreSQL CI job is experimental; SQLite is the tested backend.</li>
+</ul>
+  </main>
+</div>
+<script src="../site.js"></script>
+</body>
+</html>

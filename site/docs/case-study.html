@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Case study: Agent Auditor watching its own chat agent | Agent Auditor</title>
+<meta name="description" content="I ran Agent Auditor against the demo agent in this repo (Auditor Chat) for about a day, switching between many models and providers, and read what the dashboard reported. This is w">
+<meta name="theme-color" content="#13211c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23c4350a'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar"><div class="wrap">
+  <a class="brand" href="../index.html"><span class="dot"></span>Agent Auditor</a>
+  <nav aria-label="Main">
+    <a href="../index.html#loop">How it works</a>
+    <a href="../index.html#verdict">Real result</a>
+    <a href="index.html" aria-current="page">Docs</a>
+    <a class="gh" href="https://github.com/ArathiS1/agent-auditor">GitHub</a>
+  </nav>
+</div></header>
+<div class="wrap docs">
+  <aside class="side" aria-label="Documentation">
+    <h4>Documentation</h4>
+    <a href="index.html">Overview</a>
+    <a href="reference.html">Reference</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="deployment.html">Deployment</a>
+    <a href="case-study.html" aria-current="page">Case study</a>
+    <a class="ext" href="https://github.com/ArathiS1/agent-auditor">Source on GitHub</a>
+  </aside>
+  <main class="art" id="main">
+<h1 id="case-study-agent-auditor-watching-its-own-chat-agent">Case study: Agent Auditor watching its own chat agent</h1>
+<p>I ran Agent Auditor against the demo agent in this repo (Auditor Chat) for about a day, switching between many models
+and providers, and read what the dashboard reported. This is what it showed, including where it fell short.
+Numbers come from the dashboard on 7 October 2026 (agent <code>chat-agent</code>, last 7 days). The run counts are small, so treat
+this as a worked example and not a benchmark.</p>
+<p><img alt="Overview" src="../assets/overview.png" /></p>
+<h2 id="1-the-agent">1. The agent</h2>
+<ul>
+<li><strong>What it does:</strong> a ChatGPT-style assistant that answers questions, uses a calculator and web search, and reads files.
+  Every chat turn is recorded as one run (a step per model call and per tool call). I was the only user.</li>
+<li><strong>Stack:</strong> Python standard-library server, with the model chosen per conversation. Each model is registered as its
+  own agent version (<code>chat-&lt;hash&gt;</code>), so the dashboard can tell models apart. Models tried:</li>
+<li>Gemini (<code>gemini-2.5-flash</code>, <code>gemini-2.5-flash-lite</code>, <code>gemini-3.5-flash</code>)</li>
+<li>AIRouter (<code>openai/gpt-5-nano</code>)</li>
+<li>Nabh (<code>mistral-7b-instruct</code>)</li>
+<li>Indos (<code>Deepseek/deepseek-v4-flash</code>, <code>openrouter/meta/llama-4-scout</code>, <code>gemini/gemini-3.8-flash</code>)</li>
+<li>OpenRouter (<code>nvidia/nemotron-3.5-lightning:free</code>)</li>
+<li>Mistral (<code>mistral-small-latest</code>)</li>
+<li>Ollama on my PC (<code>llama3.1</code>)</li>
+<li><strong>How it was connected:</strong> the chat server posts each turn to Agent Auditor through the Python SDK. No change to the
+  agent's logic was needed.</li>
+</ul>
+<h2 id="2-baseline">2. Baseline</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Measure</th>
+<th>Value</th>
+<th>Runs behind it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Runs with a problem</td>
+<td>93.9% (24 errored, 38 answered badly)</td>
+<td>66 runs</td>
+</tr>
+<tr>
+<td>Quality checks passed</td>
+<td>56%</td>
+<td>168 of 302 checks</td>
+</tr>
+<tr>
+<td>Median answer time</td>
+<td>46 s (slowest 5%: 179 s)</td>
+<td>66 runs</td>
+</tr>
+<tr>
+<td>Top failure cause</td>
+<td>slow run, 32 of 62 flagged runs</td>
+<td>62 flagged runs</td>
+</tr>
+<tr>
+<td>Other causes</td>
+<td>llm error 24, tool error 3, user rejected 1</td>
+<td>62 flagged runs</td>
+</tr>
+<tr>
+<td>Error types</td>
+<td>other 13, timeout 6, rate limit 5, auth 2, not found 1, server error 1</td>
+<td>failed runs</td>
+</tr>
+</tbody>
+</table></div>
+<p>Each of the 62 flagged runs (24 errored plus 38 answered badly) gets one most-likely cause.</p>
+<p>The headline number looks alarming, and the dashboard's own breakdown shows why it is misleading. Most flagged runs
+were <strong>slow</strong>, not wrong. For example, one run (<code>e25be41e</code>, AIRouter <code>gpt-5-nano</code>) answered the question correctly but took
+23 s against the 10 s latency budget, so it was flagged as a slow run. Another model (<code>deepseek-v4-flash</code>) was flagged
+at 10.2 s for the same question. The rest were provider problems: timeouts, rate limits and rejected keys.</p>
+<p><img alt="Failures" src="../assets/failures.png" /></p>
+<h2 id="3-failures-turned-into-regression-tests">3. Failures turned into regression tests</h2>
+<ul>
+<li><strong>Converted:</strong> 4 regression tests, all from the latency check. They came from the questions "Explain RAG simply",
+  "which is the best ai tool for content creating", "what is this image" and "which is the best ai tool for generating
+  ai contents". Three of them had been seen 3–4 times each, which is what the "Seen" column counts.</li>
+<li><strong>Replayed:</strong> not yet. The page shows "No replays yet". Replay needs the SDK to call the agent from Python, and I
+  did not run that step for this case study.</li>
+</ul>
+<p><img alt="Regression tests" src="../assets/regression-tests.png" /></p>
+<h2 id="4-a-change-gated-by-a-canary">4. A change gated by a canary</h2>
+<p><strong>First attempt (7 October): no verdict.</strong> I used the Canary page to compare the active version (<code>chat-8a662e2d</code>) with
+three candidates. All four checks ended <strong>continue</strong>, "only N canary runs so far; need 20" (N was 0, 2, 3 and 0). That
+is the correct behaviour: with too few runs on both sides, the tool says so instead of guessing. It also meant my chat,
+which sends all traffic to production, never gave a candidate enough canary runs.</p>
+<p><strong>Second attempt (9 November): a real verdict.</strong> I wrote <code>bench/canary.py</code>, which asks a baseline model and a candidate
+model the same 24 questions, records them as <code>production</code> and <code>canary</code> runs, scores them, and asks the Auditor for a
+verdict. A first candidate (<code>gemini-2.5-flash-lite</code>) was refused by Google ("not available for this kind of request"),
+so it got 4 runs and the verdict was again <strong>continue</strong>. With a working candidate:</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th></th>
+<th>Baseline</th>
+<th>Candidate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Model</td>
+<td>Indos <code>Deepseek/deepseek-v4-flash</code></td>
+<td>AIRouter <code>openai/gpt-5-nano</code></td>
+</tr>
+<tr>
+<td>Environment</td>
+<td>production</td>
+<td>canary</td>
+</tr>
+<tr>
+<td>Answered / errored</td>
+<td>24 / 0</td>
+<td>24 / 0</td>
+</tr>
+<tr>
+<td>Median answer time</td>
+<td>1.7 s</td>
+<td>4.4 s</td>
+</tr>
+<tr>
+<td>95th percentile</td>
+<td>2.9 s</td>
+<td>9.0 s</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Verdict: HOLD.</strong></p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>evals</td>
+<td>pass: no significant pass-rate regression</td>
+</tr>
+<tr>
+<td>latency</td>
+<td><strong>fail</strong>: 3.16x the baseline (KS p = 4e-9)</td>
+</tr>
+<tr>
+<td>causes</td>
+<td>pass: no failure cause became more common</td>
+</tr>
+<tr>
+<td>drift</td>
+<td>warning: latency differs; "may come from routing rather than the candidate"</td>
+</tr>
+<tr>
+<td>replay</td>
+<td>skipped: no regression replay for the candidate version</td>
+</tr>
+<tr>
+<td>change</td>
+<td>pass: likely a model change (moderate), since only the model changed</td>
+</tr>
+</tbody>
+</table></div>
+<p>How to read it: the candidate was not wrong or broken, it was <strong>slower</strong>. The Auditor held it back instead of rolling it
+back, because its rollback threshold is 4x on latency and this was 3.16x, and nothing else regressed. That is the
+decision I would have made by hand, but I got it with numbers and a named check behind it.</p>
+<p>Still missing: a <strong>rollback</strong> and a <strong>promote</strong> result. I did not get either one on real models.</p>
+<h2 id="5-what-it-caught-that-i-would-have-missed">5. What it caught that I would have missed</h2>
+<ul>
+<li><strong>Slow-but-correct answers were being counted as failures.</strong> Reading the answers alone, many looked fine. The latency
+  check and the "What to change" box showed that the real problem was model speed, not answer quality.</li>
+<li><strong>A local model that was effectively unusable.</strong> Runs on Ollama <code>llama3.1</code> took 600 to 854 s each, and two timed out at
+  about 600 s. I had no feel for that on my own PC until the Runs page listed it.</li>
+<li><strong>Failures clustering by provider.</strong> One Gemini model failed in under half a second with "not available" (a model that
+  was gone), which is a different problem from the timeouts and rate limits. The per-cause tags kept these apart.</li>
+<li><strong>The need for a fix outside the prompt.</strong> Several of the causes could not be fixed by editing prompts. This led me to
+  add automatic routing around slow and rate-limited models to the chat app.</li>
+</ul>
+<h2 id="6-what-did-not-work">6. What did not work</h2>
+<ul>
+<li><strong>The Fixes page had nothing it could apply.</strong> For 37 failed runs it proposed three items (investigate slow run, handle
+  model rate limits, investigate tool error), all marked <em>manual</em>, because each "needs a code or infrastructure change,
+  not a setting". That is by design, but it means the tool could not fix this agent on its own.</li>
+<li><strong>Only one real canary verdict, and it was a hold</strong> (section 4). I have no real rollback or promote, so I cannot say how
+  the tool behaves when a candidate is truly bad. In a test with fake model servers, a candidate that errored on every call
+  was rolled back and an identical one was promoted, but that is a simulation.</li>
+<li><strong>The canary cannot see wrong-but-well-formed answers.</strong> In that same test, a candidate that answered "I am not sure" to
+  everything was promoted, because the built-in checks look at errors and speed, not correctness.</li>
+<li><strong>Benchmark scores are shaky at this size.</strong> The Benchmark page ranked <code>nvidia/nemotron-3.5-lightning:free</code> at 83% and
+  <code>mistral-small-latest</code> at 0%, but the 0% most likely reflects rate-limited calls, not poor answers, and Gemini and
+  Ollama had no checked answers. Do not read it as a model ranking.</li>
+<li><strong>Root-cause "tied to one version" was empty.</strong> It needs two versions with enough runs each, and my runs were spread
+  across a dozen or so versions.</li>
+<li><strong>No source-document analysis.</strong> The chat does not report document ids for retrieved results, so that check was skipped.</li>
+<li><strong>The regression tests are only latency tests</strong>, so they say nothing about answer correctness.</li>
+<li>See also "Known limitations" in the <a href="https://github.com/ArathiS1/agent-auditor/blob/main/README.md">README</a>.</li>
+</ul>
+<p><img alt="Audit trail" src="../assets/audit-log.png" /></p>
+<h2 id="7-reproduce-it">7. Reproduce it</h2>
+<ul>
+<li>Agent Auditor 0.12.1, SQLite database (<code>agent_auditor.db</code>), Windows, Python 3.11 or newer.</li>
+<li>Start everything with <code>powershell -ExecutionPolicy Bypass -File .\run-all.ps1</code>, put your provider keys in <code>.env</code>,
+  and chat with several models in the chat app (it records each turn automatically).</li>
+<li>For a canary on real models, keep that running and, in a second window, run
+  <code>python bench/canary.py --baseline "&lt;provider:model&gt;" --candidate "&lt;provider:model&gt;" --pause 2</code>.
+  <code>python bench/canary.py --list</code> shows the ids. It needs two working models and takes about 10 to 15 minutes.</li>
+<li>Open <code>http://127.0.0.1:8000/dashboard</code>, select <code>chat-agent</code>, then use Overview, Failures, Root causes, Regression
+  tests, Fixes and Canary. Your numbers will differ, because they depend on your keys, models and the day's rate limits.</li>
+<li>To validate the tool itself against planted faults instead of live traffic, run <code>python validation/run_validation.py --dry-run</code>.</li>
+</ul>
+  </main>
+</div>
+<script src="../site.js"></script>
+</body>
+</html>

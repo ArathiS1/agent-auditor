@@ -16,7 +16,7 @@ flowchart LR
   E & D & R & T --> C[Canary comparison<br/>promote / hold / rollback / continue]
   C --> G[Release gate<br/>evidence + approvals]
   G -->|activate / roll back| V[Active version]
-  V -.->|auditor.active_version()| A
+  V -.->|"auditor.active_version()"| A
   G --> L[(Audit trail)]
 ```
 

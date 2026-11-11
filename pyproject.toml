@@ -7,6 +7,19 @@ name = "agent-auditor"
 version = "0.12.1"
 license = { text = "MIT" }
 readme = "README.md"
+authors = [{ name = "Arathi" }]
+keywords = ["ai-agents", "llm", "evaluation", "observability", "regression-testing", "canary", "mlops"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Software Development :: Testing",
+  "Framework :: FastAPI",
+]
 description = "Open-source reliability layer for AI agents: traces, evals, drift, failure-to-test, root cause, canaries, rollback."
 requires-python = ">=3.11"
 dependencies = [
@@ -18,12 +31,19 @@ dependencies = [
   "alembic>=1.13",
 ]
 
+[project.urls]
+Homepage = "https://arathis1.github.io/agent-auditor/"
+Documentation = "https://arathis1.github.io/agent-auditor/docs/"
+Repository = "https://github.com/ArathiS1/agent-auditor"
+Issues = "https://github.com/ArathiS1/agent-auditor/issues"
+
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.5"]
 postgres = ["psycopg[binary]>=3.1"]
 langgraph = ["langgraph>=0.2", "langchain-core>=0.3"]
 
 [project.scripts]
+agent-auditor = "agent_auditor.cli:main"
 agent-auditor-worker = "agent_auditor.worker:main"
 
 [tool.setuptools.packages.find]

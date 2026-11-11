@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Deployment | Agent Auditor</title>
+<meta name="description" content="Compose refuses to start without both variables. The API container applies migrations (alembic upgrade head) before it serves; the worker starts after the API reports ready. Data l">
+<meta name="theme-color" content="#13211c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23c4350a'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar"><div class="wrap">
+  <a class="brand" href="../index.html"><span class="dot"></span>Agent Auditor</a>
+  <nav aria-label="Main">
+    <a href="../index.html#loop">How it works</a>
+    <a href="../index.html#verdict">Real result</a>
+    <a href="index.html" aria-current="page">Docs</a>
+    <a class="gh" href="https://github.com/ArathiS1/agent-auditor">GitHub</a>
+  </nav>
+</div></header>
+<div class="wrap docs">
+  <aside class="side" aria-label="Documentation">
+    <h4>Documentation</h4>
+    <a href="index.html">Overview</a>
+    <a href="reference.html">Reference</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="deployment.html" aria-current="page">Deployment</a>
+    <a href="case-study.html">Case study</a>
+    <a class="ext" href="https://github.com/ArathiS1/agent-auditor">Source on GitHub</a>
+  </aside>
+  <main class="art" id="main">
+<h1 id="deployment">Deployment</h1>
+<h2 id="docker-compose-api-worker-postgresql">Docker Compose (API + worker + PostgreSQL)</h2>
+<pre><code class="language-bash">cp .env.example .env        # then set POSTGRES_PASSWORD and AUDITOR_API_KEY
+docker compose up --build
+curl http://127.0.0.1:8000/readyz        # {&quot;status&quot;:&quot;ok&quot;}
+</code></pre>
+<p>Compose refuses to start without both variables. The API container applies migrations (<code>alembic upgrade head</code>) before
+it serves; the worker starts after the API reports ready. Data lives in the <code>pgdata</code> volume.</p>
+<p>Point the SDK at it:</p>
+<pre><code class="language-python">auditor = Auditor(&quot;http://127.0.0.1:8000&quot;, agent=&quot;support-bot&quot;, api_key=&quot;&lt;AUDITOR_API_KEY&gt;&quot;)
+</code></pre>
+<h2 id="configuration">Configuration</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AUDITOR_DATABASE_URL</code></td>
+<td><code>sqlite:///./agent_auditor.db</code></td>
+<td>SQLAlchemy URL. Use <code>postgresql+psycopg://user:pass@host/db</code> in production.</td>
+</tr>
+<tr>
+<td><code>AUDITOR_API_KEY</code></td>
+<td>unset (open)</td>
+<td>When set, every <code>/v1</code> request must send it as <code>X-API-Key</code>. <code>/healthz</code> and <code>/readyz</code> stay open.</td>
+</tr>
+<tr>
+<td><code>ANTHROPIC_API_KEY</code></td>
+<td>unset (helper off)</td>
+<td>Optional. Turns on the dashboard's AI helper and "Suggest a fix". Questions send the dashboard's figures to the Claude API.</td>
+</tr>
+<tr>
+<td><code>AUDITOR_ASSISTANT_MODEL</code></td>
+<td><code>claude-sonnet-5-5</code></td>
+<td>Model the helper uses.</td>
+</tr>
+<tr>
+<td><code>AUDITOR_AUTO_CREATE_TABLES</code></td>
+<td><code>true</code></td>
+<td>Create missing tables at startup. Set <code>false</code> when Alembic manages the schema (Compose does).</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="migrations">Migrations</h2>
+<pre><code class="language-bash">alembic upgrade head                       # new database
+alembic stamp head                         # database that the app created itself (SQLite default)
+alembic revision --autogenerate -m &quot;...&quot;   # after changing models/
+</code></pre>
+<p>Read the note at the top of <code>migrations/versions/0001_baseline.py</code> before changing a model for the first time.
+Run migrations from one place at a time; two API replicas starting together can race on the first upgrade.</p>
+<h2 id="worker">Worker</h2>
+<p><code>agent-auditor-worker</code> scores and diagnoses new runs for every agent every 30 seconds (production and canary
+environments). <code>--once</code> runs a single cycle. Run one worker per database.</p>
+<h2 id="without-docker">Without Docker</h2>
+<pre><code class="language-bash">pip install -e &quot;.[postgres]&quot;
+export AUDITOR_DATABASE_URL=postgresql+psycopg://...
+alembic upgrade head
+AUDITOR_AUTO_CREATE_TABLES=false uvicorn agent_auditor.api.main:app --host 0.0.0.0
+agent-auditor-worker
+</code></pre>
+<h2 id="before-you-expose-it">Before you expose it</h2>
+<ul>
+<li>Put it behind TLS (a reverse proxy or your platform's load balancer). The API key travels in a header.</li>
+<li>Treat the API key as a shared secret, not as user identity. Approver and actor names in releases are
+  self-asserted strings; the audit trail is a labelled record, not proof of who acted.</li>
+<li>Back up the database. The audit trail and the saved reports live there.</li>
+<li>Ingested runs contain your agents' inputs and outputs. Decide what you are allowed to store, and redact in the SDK
+  (<code>capture_input=False</code> on <code>observe_run</code>) before sending anything sensitive.</li>
+</ul>
+  </main>
+</div>
+<script src="../site.js"></script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agent Auditor</title>
+<meta name="description" content="Open-source reliability layer for AI agents: traces, evals, root causes, regression tests, canary and gated releases.">
+<meta property="og:title" content="Agent Auditor">
+<meta property="og:description" content="Open-source reliability layer for AI agents: traces, evals, root causes, regression tests, canary and gated releases.">
+<meta name="theme-color" content="#13211c">
+<link rel="canonical" href="https://arathis1.github.io/agent-auditor/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://arathis1.github.io/agent-auditor/">
+<meta property="og:image" content="https://arathis1.github.io/agent-auditor/assets/social.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://arathis1.github.io/agent-auditor/assets/social.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23c4350a'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar"><div class="wrap">
+  <a class="brand" href="index.html"><span class="dot"></span>Agent Auditor</a>
+  <nav aria-label="Main">
+    <a href="#loop">How it works</a>
+    <a href="#verdict">Real result</a>
+    <a href="demo/">Live demo</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#fit">Where it fits</a>
+    <a href="docs/case-study.html">Case study</a>
+    <a href="docs/index.html">Docs</a>
+    <a class="gh" href="https://github.com/ArathiS1/agent-auditor">GitHub</a>
+  </nav>
+</div></header>
+
+<main id="main">
+<section class="hero"><div class="wrap">
+  <h1>Find out why your AI agent fails, and prove the fix before you ship it.</h1>
+  <p class="sub">Agent Auditor records every run of an agent, scores it, names the likely cause of each failure, and turns real failures into regression tests. A new version only goes live after a canary check and a person's approval. <strong>Open source, MIT licensed, alpha.</strong></p>
+  <div class="btns">
+    <a class="btn primary" href="demo/">Try the live demo</a>
+    <a class="btn ghost" href="#start">Run it yourself</a>
+    <a class="btn ghost" href="https://github.com/ArathiS1/agent-auditor" id="star">&#9733; Star on GitHub<span id="stars" hidden></span></a>
+    <a class="btn ghost" href="docs/case-study.html">Read the case study</a>
+  </div>
+  <div class="tape">
+      <svg viewBox="0 0 1000 150" role="img" aria-label="A row of 62 vertical bars, one per agent run: 38 green for runs that were fine, 24 red for runs that failed. Taller bars are slower runs. Dashed lines mark a new version going live.">
+      <line class="ver" x1="30" x2="30" y1="4" y2="130"/>
+      <line class="ver" x1="142" x2="142" y1="4" y2="130"/>
+      <line class="ver" x1="270" x2="270" y1="4" y2="130"/>
+      <line class="ver" x1="366" x2="366" y1="4" y2="130"/>
+      <line class="ver" x1="526" x2="526" y1="4" y2="130"/>
+      <line class="ver" x1="654" x2="654" y1="4" y2="130"/>
+      <line class="ver" x1="798" x2="798" y1="4" y2="130"/>
+      <line class="ver" x1="910" x2="910" y1="4" y2="130"/>
+      <rect class="bar-ok" x="0" y="83" width="12" height="47" rx="1.5"/>
+      <rect class="bar-ok" x="16" y="80" width="12" height="50" rx="1.5"/>
+      <rect class="bar-fail" x="32" y="19" width="12" height="111" rx="1.5"/>
+      <rect class="bar-ok" x="48" y="69" width="12" height="61" rx="1.5"/>
+      <rect class="bar-ok" x="64" y="67" width="12" height="63" rx="1.5"/>
+      <rect class="bar-fail" x="80" y="50" width="12" height="80" rx="1.5"/>
+      <rect class="bar-fail" x="96" y="21" width="12" height="109" rx="1.5"/>
+      <rect class="bar-ok" x="112" y="108" width="12" height="22" rx="1.5"/>
+      <rect class="bar-ok" x="128" y="75" width="12" height="55" rx="1.5"/>
+      <rect class="bar-fail" x="144" y="56" width="12" height="74" rx="1.5"/>
+      <rect class="bar-ok" x="160" y="105" width="12" height="25" rx="1.5"/>
+      <rect class="bar-fail" x="176" y="58" width="12" height="72" rx="1.5"/>
+      <rect class="bar-fail" x="192" y="48" width="12" height="82" rx="1.5"/>
+      <rect class="bar-ok" x="208" y="93" width="12" height="37" rx="1.5"/>
+      <rect class="bar-ok" x="224" y="70" width="12" height="60" rx="1.5"/>
+      <rect class="bar-ok" x="240" y="107" width="12" height="23" rx="1.5"/>
+      <rect class="bar-ok" x="256" y="79" width="12" height="51" rx="1.5"/>
+      <rect class="bar-ok" x="272" y="88" width="12" height="42" rx="1.5"/>
+      <rect class="bar-ok" x="288" y="80" width="12" height="50" rx="1.5"/>
+      <rect class="bar-fail" x="304" y="23" width="12" height="107" rx="1.5"/>
+      <rect class="bar-ok" x="320" y="96" width="12" height="34" rx="1.5"/>
+      <rect class="bar-ok" x="336" y="75" width="12" height="55" rx="1.5"/>
+      <rect class="bar-ok" x="352" y="94" width="12" height="36" rx="1.5"/>
+      <rect class="bar-ok" x="368" y="68" width="12" height="62" rx="1.5"/>
+      <rect class="bar-ok" x="384" y="90" width="12" height="40" rx="1.5"/>
+      <rect class="bar-ok" x="400" y="77" width="12" height="53" rx="1.5"/>
+      <rect class="bar-ok" x="416" y="108" width="12" height="22" rx="1.5"/>
+      <rect class="bar-ok" x="432" y="66" width="12" height="64" rx="1.5"/>
+      <rect class="bar-fail" x="448" y="55" width="12" height="75" rx="1.5"/>
+      <rect class="bar-fail" x="464" y="31" width="12" height="99" rx="1.5"/>
+      <rect class="bar-fail" x="480" y="19" width="12" height="111" rx="1.5"/>
+      <rect class="bar-ok" x="496" y="91" width="12" height="39" rx="1.5"/>
+      <rect class="bar-fail" x="512" y="34" width="12" height="96" rx="1.5"/>
+      <rect class="bar-ok" x="528" y="73" width="12" height="57" rx="1.5"/>
+      <rect class="bar-fail" x="544" y="55" width="12" height="75" rx="1.5"/>
+      <rect class="bar-fail" x="560" y="44" width="12" height="86" rx="1.5"/>
+      <rect class="bar-ok" x="576" y="88" width="12" height="42" rx="1.5"/>
+      <rect class="bar-fail" x="592" y="46" width="12" height="84" rx="1.5"/>
+      <rect class="bar-fail" x="608" y="28" width="12" height="102" rx="1.5"/>
+      <rect class="bar-fail" x="624" y="42" width="12" height="88" rx="1.5"/>
+      <rect class="bar-fail" x="640" y="59" width="12" height="71" rx="1.5"/>
+      <rect class="bar-ok" x="656" y="104" width="12" height="26" rx="1.5"/>
+      <rect class="bar-ok" x="672" y="72" width="12" height="58" rx="1.5"/>
+      <rect class="bar-ok" x="688" y="102" width="12" height="28" rx="1.5"/>
+      <rect class="bar-ok" x="704" y="83" width="12" height="47" rx="1.5"/>
+      <rect class="bar-ok" x="720" y="102" width="12" height="28" rx="1.5"/>
+      <rect class="bar-ok" x="736" y="90" width="12" height="40" rx="1.5"/>
+      <rect class="bar-ok" x="752" y="84" width="12" height="46" rx="1.5"/>
+      <rect class="bar-ok" x="768" y="104" width="12" height="26" rx="1.5"/>
+      <rect class="bar-fail" x="784" y="59" width="12" height="71" rx="1.5"/>
+      <rect class="bar-ok" x="800" y="65" width="12" height="65" rx="1.5"/>
+      <rect class="bar-fail" x="816" y="60" width="12" height="70" rx="1.5"/>
+      <rect class="bar-ok" x="832" y="95" width="12" height="35" rx="1.5"/>
+      <rect class="bar-ok" x="848" y="95" width="12" height="35" rx="1.5"/>
+      <rect class="bar-fail" x="864" y="57" width="12" height="73" rx="1.5"/>
+      <rect class="bar-fail" x="880" y="30" width="12" height="100" rx="1.5"/>
+      <rect class="bar-ok" x="896" y="84" width="12" height="46" rx="1.5"/>
+      <rect class="bar-ok" x="912" y="83" width="12" height="47" rx="1.5"/>
+      <rect class="bar-fail" x="928" y="34" width="12" height="96" rx="1.5"/>
+      <rect class="bar-ok" x="944" y="104" width="12" height="26" rx="1.5"/>
+      <rect class="bar-fail" x="960" y="24" width="12" height="106" rx="1.5"/>
+      <rect class="bar-fail" x="976" y="20" width="12" height="110" rx="1.5"/>
+      <line class="axis" x1="0" x2="992" y1="131" y2="131"/></svg>
+    <div class="legend">
+      <span><i style="background:#4f9f7b"></i>run was fine</span>
+      <span><i style="background:#e0562c"></i>run failed</span>
+      <span><i class="dash"></i>new version went live</span>
+      <span>Redrawn from the Overview page: 62 runs, 24 failed. Taller means slower.</span>
+    </div>
+  </div>
+</div></section>
+
+<section class="sec" id="loop"><div class="wrap">
+  <h2>Tracing tools show what happened. This closes the loop.</h2>
+  <p class="lede">When an agent breaks you still have to work out why, write the test by hand, change something and hope. Each step below is a page in the dashboard and a call in the API.</p>
+  <ol class="loop">
+    <li><h3>Trace</h3><p>Every run and its steps, from a small Python SDK.</p></li>
+    <li><h3>Score</h3><p>Built-in checks that need no API key: errors, speed, empty answers, grounding.</p></li>
+    <li><h3>Explain</h3><p>A likely cause per failure, and which change probably brought it in.</p></li>
+    <li><h3>Remember</h3><p>One click turns a failed run into a regression test.</p></li>
+    <li><h3>Propose</h3><p>Fix candidates, replayed on every saved test.</p></li>
+    <li><h3>Canary</h3><p>Compare a candidate with the live version on real runs.</p></li>
+    <li><h3>Release</h3><p>A different person approves. Roll back with a reason. Everything is logged.</p></li>
+  </ol>
+</div></section>
+
+<section class="sec" id="verdict"><div class="wrap verdict">
+  <div>
+    <h2>It held back a slower model, with the numbers to say why.</h2>
+    <p class="lede" style="margin-bottom:0">Two real models answered the same 24 questions. Neither failed. The candidate was just slower, and the canary said so instead of guessing.</p>
+    <div class="cmp" role="group" aria-label="Answer time, baseline against candidate">
+      <h3>Median answer time</h3>
+      <div class="line"><span class="lbl">deepseek-v4-flash</span><span class="track"><span class="fill a" style="width:18.9%"></span></span><span class="n">1.7 s</span></div>
+      <div class="line"><span class="lbl">gpt-5-nano</span><span class="track"><span class="fill b" style="width:48.9%"></span></span><span class="n">4.4 s</span></div>
+      <h3 style="margin-top:20px">Slowest 5% (95th percentile)</h3>
+      <div class="line"><span class="lbl">deepseek-v4-flash</span><span class="track"><span class="fill a" style="width:32.2%"></span></span><span class="n">2.9 s</span></div>
+      <div class="line"><span class="lbl">gpt-5-nano</span><span class="track"><span class="fill b" style="width:100%"></span></span><span class="n">9.0 s</span></div>
+    </div>
+    <p class="note">Hold, not rollback, because the rollback line is 4x slower and this was 3.16x. I have not yet seen a real rollback or promote on real models. <a href="docs/case-study.html#4-a-change-gated-by-a-canary">Read the full run</a>, including what did not work.</p>
+  </div>
+  <div class="console" role="img" aria-label="Canary report. Evals pass, latency fail at 3.16 times the baseline, causes pass, drift warning, replay skipped, change pass. Verdict: hold.">
+    <div class="h">canary: 24 runs each, same questions</div>
+    <div class="row"><span>evals</span><span class="pass">pass</span><span>no pass-rate regression</span></div>
+    <div class="row"><span>latency</span><span class="fail">FAIL</span><span>3.16x baseline, KS p = 4e-9</span></div>
+    <div class="row"><span>causes</span><span class="pass">pass</span><span>no cause got more common</span></div>
+    <div class="row"><span>drift</span><span class="warn">warn</span><span>latency differs</span></div>
+    <div class="row"><span>replay</span><span class="skip">skip</span><span>no replay for candidate</span></div>
+    <div class="row"><span>change</span><span class="pass">pass</span><span>model change, moderate</span></div>
+    <div class="final">VERDICT: HOLD</div>
+  </div>
+</div></section>
+
+<section class="sec" id="dashboard"><div class="wrap">
+  <h2>A dashboard that explains itself.</h2>
+  <p class="lede">Fifteen pages in plain HTML, served by the API. No build step and no CDN. Every chart has a table view, and "Ask for help" answers from a built-in guide without a key.</p>
+
+  <figure class="demo"><img src="assets/demo.gif" width="960" height="489" alt="Animated tour of the dashboard: Overview, Failures, Regression tests and Audit log, taken from real screenshots."><figcaption>A tour of four of the fifteen pages, from real screenshots.</figcaption></figure>
+
+  <div class="shot">
+    <div class="txt"><h3>See the problem at a glance</h3><p>The Overview gives a health verdict and one tick per run, so a bad hour shows up as a red patch.</p></div>
+    <a class="img" href="assets/overview.png"><img src="assets/overview.png" width="1600" height="739" loading="lazy" alt="Agent Auditor Overview page: two things need attention, 62 runs, 91.9 percent with problems, and a tape of every run in green and red."></a>
+  </div>
+  <div class="shot">
+    <div class="txt"><h3>Each failure has a cause and a next step</h3><p>Every card names the likely cause and says what to change first. Open the trace to see each step.</p></div>
+    <a class="img" href="assets/failures.png"><img src="assets/failures.png" width="1600" height="739" loading="lazy" alt="Failures page listing failed runs with cause tags such as llm error and timeout, and a box saying what to change."></a>
+  </div>
+  <div class="shot">
+    <div class="txt"><h3>Failures become tests</h3><p>A bad run turns into a regression test that is replayed against every new version.</p></div>
+    <a class="img" href="assets/regression-tests.png"><img src="assets/regression-tests.png" width="1600" height="739" loading="lazy" alt="Regression tests page with cases created from failed runs and how often each was seen."></a>
+  </div>
+  <div class="shot">
+    <div class="txt"><h3>Every decision is on the record</h3><p>Promotions, rollbacks and refusals are written to an audit log, so you can say who approved what and when.</p></div>
+    <a class="img" href="assets/audit-log.png"><img src="assets/audit-log.png" width="1600" height="739" loading="lazy" alt="Audit log page listing release and approval events."></a>
+  </div>
+</div></section>
+
+<section class="sec" id="fit"><div class="wrap">
+  <h2>Where it fits, and where it does not.</h2>
+  <p class="lede">Tools such as Langfuse, LangSmith and Arize Phoenix are mature, widely used and have large teams behind them. Agent Auditor is one person's alpha project. Pick it for one reason: it covers the steps after tracing.</p>
+  <div class="fit">
+    <div>
+      <h3>Pick Agent Auditor if you want</h3>
+      <ul>
+        <li>A failed run turned into a regression test with one click</li>
+        <li>A named likely cause for every failure, not only a trace</li>
+        <li>A canary and an approval gate before a new version goes live</li>
+        <li>Something small you can read, run offline and change</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Pick a bigger platform if you need</h3>
+      <ul>
+        <li>Production scale, hosted service or a support contract</li>
+        <li>Many integrations and SDKs beyond Python</li>
+        <li>Real user accounts and roles</li>
+        <li>Checks on whether an answer is factually right</li>
+      </ul>
+    </div>
+  </div>
+</div></section>
+
+<section class="sec" id="start"><div class="wrap start">
+  <div>
+    <h2>Run it in two minutes.</h2>
+    <p class="lede">Needs Python 3.11 or newer. The core runs offline with no API key. <a href="demo/">Or click through the live demo first.</a></p>
+    <div class="code"><button type="button">Copy</button><pre>git clone https://github.com/ArathiS1/agent-auditor
+cd agent-auditor
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -e .
+agent-auditor demo
+# opens the dashboard with sample data; nothing is saved</pre></div>
+  </div>
+  <ul>
+    <li><strong>On Windows,</strong> one command starts the Auditor and the chat demo together: <code>powershell -ExecutionPolicy Bypass -File .\run-all.ps1</code></li>
+    <li><strong>Keys are optional.</strong> They are only used by the demo chat app, the AI helper and AI-written fixes.</li>
+    <li><strong>With your own agent,</strong> add the SDK decorators to any Python agent. LangGraph is supported.</li>
+    <li><strong>Docker</strong> runs the API, a worker and PostgreSQL.</li>
+    <li><a href="docs/index.html">Read the docs</a></li>
+  </ul>
+</div></section>
+
+<section class="sec" id="limits"><div class="wrap">
+  <h2>What it does not do yet.</h2>
+  <p class="lede">Alpha software, run on one developer's machine and not proven under production load.</p>
+  <ul class="limits">
+    <li><strong>It checks symptoms, not facts.</strong> Errors, speed and empty answers are caught. A wrong answer that looks well formed is not.</li>
+    <li><strong>Fixes are proposals.</strong> A person registers a candidate, the tests replay on it, a canary compares it and someone else approves it.</li>
+    <li><strong>Approver names are self-asserted</strong> behind one shared API key. Real authentication is on the roadmap.</li>
+    <li><strong>Promotion deploys nothing.</strong> It marks a version active.</li>
+    <li><strong>Replay needs an agent that can be called again</strong> with the stored inputs.</li>
+    <li><strong>SQLite is the tested backend.</strong> PostgreSQL is experimental.</li>
+  </ul>
+</div></section>
+<section class="sec" id="help"><div class="wrap">
+  <h2>Help build it.</h2>
+  <p class="lede">It is early, so a small contribution goes a long way. If it saved you an afternoon, a star helps other people find it.</p>
+  <ul class="help">
+    <li><strong>Try it on your own agent</strong> and tell us where it broke. <a href="https://github.com/ArathiS1/agent-auditor/issues/new">Open an issue</a></li>
+    <li><strong>Build from the roadmap:</strong> one-click "apply and verify" for fixes, real user authentication, fact-checking scorers, a green PostgreSQL job, a PyPI package. <a href="https://github.com/ArathiS1/agent-auditor#roadmap">See the roadmap</a></li>
+    <li><strong>Pick a small task:</strong> <a href="https://github.com/ArathiS1/agent-auditor/issues?q=is%3Aopen+label%3A%22good+first+issue%22">good first issues</a></li>
+    <li><strong>Ask a question or share an idea</strong> in <a href="https://github.com/ArathiS1/agent-auditor/discussions">Discussions</a></li>
+  </ul>
+  <div class="btns">
+    <a class="btn primary" href="https://github.com/ArathiS1/agent-auditor">&#9733; Star on GitHub</a>
+    <a class="btn outline" href="https://github.com/ArathiS1/agent-auditor/blob/main/CONTRIBUTING.md">Read CONTRIBUTING</a>
+  </div>
+</div></section>
+</main>
+
+<footer><div class="wrap">
+  <span>Agent Auditor, MIT licensed.</span>
+  <a href="docs/index.html">Docs</a>
+  <a href="docs/case-study.html">Case study</a>
+  <a href="https://github.com/ArathiS1/agent-auditor">Source on GitHub</a>
+  <a href="https://github.com/ArathiS1/agent-auditor/blob/main/CONTRIBUTING.md">Contribute</a>
+  <span class="r">Alpha, 0.12</span>
+</div></footer>
+<script src="site.js"></script>
+</body>
+</html>
