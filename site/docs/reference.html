@@ -27,6 +27,7 @@
     <a href="reference.html" aria-current="page">Reference</a>
     <a href="architecture.html">Architecture</a>
     <a href="deployment.html">Deployment</a>
+    <a href="importing-traces.html">OpenTelemetry import</a>
     <a href="answer-correctness.html">Wrong answers</a>
     <a href="case-study.html">Case study</a>
     <a class="ext" href="https://github.com/ArathiS1/agent-auditor">Source on GitHub</a>
@@ -526,6 +527,13 @@ On the sample run, three of five planted faults were rolled back every time, hal
 may only promote a version when the gate passes and enough people approve. Every decision, including refusals, is
 in the audit trail. Diagram and component notes: <a href="architecture.html">docs/architecture.md</a>. To validate on your
 own agent, follow <a href="case-study.html">docs/case-study.md</a>.</p>
+<h2 id="opentelemetry-import">OpenTelemetry import</h2>
+<p><code>POST /v1/traces</code> is the standard OTLP/HTTP trace endpoint (JSON, or protobuf with <code>pip install "agent-auditor[otel]"</code>), so
+an OpenTelemetry exporter can send traces to the Auditor with <code>OTEL_EXPORTER_OTLP_ENDPOINT</code> and no code change. Each trace
+becomes a run, keyed by its trace id (resending is safe); <code>service.name</code>, <code>service.version</code> and <code>deployment.environment</code>
+become the agent, version and environment. Spans written with OpenInference, OTel GenAI, OpenLLMetry or Langfuse attributes
+give steps with their question, answer, model and tokens. <code>agent-auditor import-otlp FILE</code> loads saved traces. How spans map,
+traces that arrive in pieces, and the limits are in <a href="importing-traces.html">importing-traces.md</a>.</p>
 <h2 id="sdk-in-20-lines">SDK in 20 lines</h2>
 <pre><code class="language-python">from agent_auditor.sdk import Auditor
 
@@ -541,6 +549,8 @@ def answer(question): ...
 <p>See <code>../examples/quickstart_plain.py</code> and <code>../examples/langgraph_demo.py</code>.</p>
 <h2 id="known-limitations">Known limitations</h2>
 <ul>
+<li>The OpenTelemetry import maps spans by attribute convention and has been tested with the OpenTelemetry Python SDK and
+  hand-written traces, not yet with a Collector or other languages' exporters. gRPC export is not supported.</li>
 <li>The AI helper and suggested fixes are only as good as the figures on the page; they can be wrong, so decisions stay with a person. Run data is sent to the Claude API when the helper is on.</li>
 <li>Approver names are self-asserted (one shared API key), and promotion only flips the active version; it deploys nothing.</li>
 <li>The dashboard has been checked in Chromium against fixtures, not yet against a long-running production server.</li>

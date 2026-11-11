@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Importing OpenTelemetry traces | Agent Auditor</title>
+<meta name="description" content="If your agent already emits OpenTelemetry traces, you do not need to change its code to use Agent Auditor. Point the exporter at the Auditor. Each trace becomes one run, its model,">
+<meta name="theme-color" content="#13211c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23c4350a'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar"><div class="wrap">
+  <a class="brand" href="../index.html"><span class="dot"></span>Agent Auditor</a>
+  <nav aria-label="Main">
+    <a href="../index.html#loop">How it works</a>
+    <a href="../index.html#verdict">Real result</a>
+    <a href="index.html" aria-current="page">Docs</a>
+    <a class="gh" href="https://github.com/ArathiS1/agent-auditor">GitHub</a>
+  </nav>
+</div></header>
+<div class="wrap docs">
+  <aside class="side" aria-label="Documentation">
+    <h4>Documentation</h4>
+    <a href="index.html">Overview</a>
+    <a href="reference.html">Reference</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="deployment.html">Deployment</a>
+    <a href="importing-traces.html" aria-current="page">OpenTelemetry import</a>
+    <a href="answer-correctness.html">Wrong answers</a>
+    <a href="case-study.html">Case study</a>
+    <a class="ext" href="https://github.com/ArathiS1/agent-auditor">Source on GitHub</a>
+  </aside>
+  <main class="art" id="main">
+<h1 id="importing-opentelemetry-traces">Importing OpenTelemetry traces</h1>
+<p>If your agent already emits OpenTelemetry traces, you do not need to change its code to use Agent Auditor. Point the exporter
+at the Auditor. Each trace becomes one run, its model, tool and retrieval spans become steps, and everything after that (evals,
+root causes, regression tests, canary, releases) works on it.</p>
+<h2 id="quick-start">Quick start</h2>
+<pre><code class="language-bash">pip install &quot;agent-auditor[otel]&quot;          # the [otel] part is only needed for protobuf, which most exporters send
+agent-auditor serve --api-key demo-key
+
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:8000     # the exporter adds /v1/traces
+export OTEL_EXPORTER_OTLP_HEADERS=&quot;x-api-key=demo-key&quot;
+</code></pre>
+<p>Run your agent as usual. Then open <code>http://127.0.0.1:8000/dashboard</code> and pick the agent. Without an API key on the server, leave
+the header out.</p>
+<p>To see it work without your own agent: <code>pip install opentelemetry-sdk opentelemetry-exporter-otlp-proto-http</code>, then
+<code>python examples/otel_to_auditor.py --key demo-key</code>. It emits traces from two versions with plain OpenTelemetry code, and the
+canary rolls the second one back because it answers "I am not sure." too often.</p>
+<h2 id="how-a-trace-maps-to-a-run">How a trace maps to a run</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>OpenTelemetry</th>
+<th>Agent Auditor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>service.name</code> (resource)</td>
+<td>the agent. Override with <code>x-auditor-agent</code> header or <code>?agent=</code></td>
+</tr>
+<tr>
+<td><code>service.version</code> (resource)</td>
+<td>the version label. Registered automatically if it is new. Override with <code>x-auditor-version</code> or <code>?version=</code></td>
+</tr>
+<tr>
+<td><code>deployment.environment.name</code> or <code>deployment.environment</code></td>
+<td>the environment: <code>canary</code> stays <code>canary</code>; test, staging, dev, ci and local become <code>test</code>; anything else is <code>production</code>. Override with <code>x-auditor-environment</code> or <code>?environment=</code></td>
+</tr>
+<tr>
+<td>a trace</td>
+<td>one run. The trace id is the run id, so sending a trace twice does not duplicate it</td>
+</tr>
+<tr>
+<td>the root span (no parent)</td>
+<td>the run: its start and end give the latency, its status gives ok or error, its input and output give the question and answer</td>
+</tr>
+<tr>
+<td>child spans that call a model, a tool or a retriever</td>
+<td>steps (<code>llm</code>, <code>tool</code>, <code>retrieval</code>)</td>
+</tr>
+<tr>
+<td>child spans that only group others (a "chain" or "agent" span with children)</td>
+<td>left out</td>
+</tr>
+<tr>
+<td>other leaf spans (an HTTP call, a database query)</td>
+<td>steps of kind <code>other</code>, so their time still counts</td>
+</tr>
+<tr>
+<td>an exception event on a span</td>
+<td>the error text</td>
+</tr>
+</tbody>
+</table></div>
+<p>Where the question, answer, model and tokens are read from:</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Convention</th>
+<th>What is read</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpenInference</td>
+<td><code>openinference.span.kind</code>, <code>input.value</code>, <code>output.value</code>, <code>llm.input_messages.N.*</code>, <code>llm.output_messages.N.*</code>, <code>llm.model_name</code>, <code>llm.token_count.*</code>, <code>retrieval.documents.N.document.content</code> and <code>.score</code></td>
+</tr>
+<tr>
+<td>OTel GenAI</td>
+<td><code>gen_ai.operation.name</code>, <code>gen_ai.input.messages</code>, <code>gen_ai.output.messages</code>, <code>gen_ai.request.model</code>, <code>gen_ai.system</code>, <code>gen_ai.usage.*</code>, <code>gen_ai.tool.call.arguments</code> and <code>.result</code></td>
+</tr>
+<tr>
+<td>OpenLLMetry (Traceloop)</td>
+<td><code>traceloop.span.kind</code>, <code>traceloop.entity.input</code> and <code>.output</code>, <code>gen_ai.prompt.N.*</code>, <code>gen_ai.completion.N.*</code></td>
+</tr>
+<tr>
+<td>Langfuse (OTel)</td>
+<td><code>langfuse.observation.type</code>, <code>langfuse.observation.input</code> and <code>.output</code>, <code>langfuse.trace.input</code> and <code>.output</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>If the root span carries no question or answer, the run takes them from its first and last model call. Retrieval spans
+with documents and scores get <code>num_docs</code> and <code>scores</code>, so the retrieval checks apply to imported runs. A span with none of
+these attributes still imports, with its timing and status. Nothing is guessed: a field that is not found stays empty.</p>
+<h2 id="traces-that-arrive-in-pieces">Traces that arrive in pieces</h2>
+<p>Exporters usually send a span as soon as it ends, so the children of a trace arrive before its root. The Auditor keeps
+the run marked <code>otel.root_pending</code> until the root arrives, then fills in the question, answer, status and latency and
+removes the mark. A step is never added twice, so resending is safe.</p>
+<h2 id="saved-traces">Saved traces</h2>
+<pre><code class="language-bash">agent-auditor import-otlp traces.json --url http://127.0.0.1:8000 --api-key demo-key
+</code></pre>
+<p>The file is OTLP/JSON: one request, or one request per line (what the OpenTelemetry Collector's <code>file</code> exporter writes).
+<code>--agent</code>, <code>--environment</code> and <code>--version</code> override what is in the file.</p>
+<h2 id="using-the-data">Using the data</h2>
+<pre><code class="language-python">auditor.run_evals()                                   # or let a canary evaluate the runs it compares
+auditor.evaluate_canary(baseline=&quot;v1&quot;, candidate=&quot;v2&quot;)
+</code></pre>
+<p>Imported runs have no expected answers, so the checks that apply are the ones that need none: errors, speed, retrieval,
+<code>gives_an_answer</code> and, if you turn it on, <code>answer_judge</code> (see <a href="answer-correctness.html">answer-correctness.md</a>).
+Imported runs do not pick up expected answers from span attributes, so <code>expectations_met</code> does not apply to them.</p>
+<h2 id="limits">Limits</h2>
+<ul>
+<li><strong>Protobuf needs the extra.</strong> JSON works without it. <code>pip install "agent-auditor[otel]"</code> adds protobuf decoding. A server
+  without it answers protobuf with a clear 415 error that says so. Exporters that use gRPC cannot send to this endpoint;
+  use the HTTP exporter (<code>OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf</code>).</li>
+<li><strong>A trace that crosses services becomes one run per service.</strong> The one without the root span stays marked <code>otel.root_pending</code>.</li>
+<li><strong>Mapping is by convention.</strong> Instrumentation that uses other attribute names imports with timing and status but no
+  question or answer text. If yours does, open an issue with a sample span and the mapping is a few lines.</li>
+<li><strong>Metrics and logs are ignored.</strong> Only traces are received.</li>
+<li><strong>Not tested against every exporter.</strong> It was tested with the OpenTelemetry Python SDK sending protobuf over HTTP, and
+  with hand-written JSON in the OpenInference, GenAI, OpenLLMetry and Langfuse styles. Not yet with a Collector, the
+  JavaScript or Java exporters, or a Langfuse deployment.</li>
+<li><strong>No sampling or retention controls.</strong> Everything sent is stored. Limit what you send at the exporter or the Collector.</li>
+<li>Requests are capped at 32 MB and 50,000 spans.</li>
+</ul>
+  </main>
+</div>
+<script src="../site.js"></script>
+</body>
+</html>

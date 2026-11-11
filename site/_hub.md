@@ -53,6 +53,7 @@ Open `/dashboard`. Fifteen pages, grouped by what you are trying to do.
 | [Reference](reference.html) | Every phase in detail: evals, drift, failure-to-test, root causes, canary, releases, attribution |
 | [Architecture](architecture.html) | How the pieces fit together |
 | [Deployment](deployment.html) | Docker, PostgreSQL and secrets |
+| [OpenTelemetry import](importing-traces.html) | Send traces from any OpenTelemetry exporter to the Auditor, with no change to your agent's code |
 | [Wrong answers](answer-correctness.html) | Catching "I am not sure" and confident wrong answers when you have no answer key, and what still slips through |
 | [Case study](case-study.html) | Agent Auditor watching its own chat agent, including what did not work |
 

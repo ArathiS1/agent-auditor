@@ -18,6 +18,7 @@ from .regress_routes import router as regress_router
 from .rootcause_routes import router as rootcause_router
 from .canary_routes import router as canary_router
 from .release_routes import router as release_router
+from .otlp_routes import router as otlp_router
 from .assistant_routes import router as assistant_router
 from .fixes_routes import router as fixes_router
 from .insight_routes import feedback_router, router as insight_router
@@ -95,6 +96,7 @@ def create_app(database_url: str | None = None, api_key: str | None = None,
         })
 
     app.include_router(router)
+    app.include_router(otlp_router)
     app.include_router(evals_router)
     app.include_router(drift_router)
     app.include_router(regress_router)

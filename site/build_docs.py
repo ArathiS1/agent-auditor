@@ -25,6 +25,7 @@ PAGES = [
     ("reference", DOCS / "reference.md", "Reference"),
     ("architecture", DOCS / "architecture.md", "Architecture"),
     ("deployment", DOCS / "deployment.md", "Deployment"),
+    ("importing-traces", DOCS / "importing-traces.md", "OpenTelemetry import"),
     ("answer-correctness", DOCS / "answer-correctness.md", "Wrong answers"),
     ("case-study", DOCS / "case-study.md", "Case study"),
 ]

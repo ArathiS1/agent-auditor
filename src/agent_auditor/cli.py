@@ -2,6 +2,7 @@
 
     agent-auditor demo     start with sample data and open the dashboard (nothing is kept)
     agent-auditor serve    run the API and dashboard with your own database
+    agent-auditor import-otlp FILE   send OpenTelemetry traces saved as JSON to a running Auditor
     agent-auditor --version
 """
 from __future__ import annotations
@@ -94,6 +95,59 @@ def cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def read_otlp_file(path: str) -> list[dict]:
+    """OTLP/JSON requests from a file: one JSON object, or one object per line (what the OpenTelemetry Collector's file exporter writes)."""
+    import json
+
+    text = open(path, encoding="utf-8-sig").read()
+    try:
+        data = json.loads(text)
+        return data if isinstance(data, list) else [data]
+    except ValueError:
+        out = []
+        for n, line in enumerate(text.splitlines(), 1):
+            if line.strip():
+                try:
+                    out.append(json.loads(line))
+                except ValueError as exc:
+                    raise SystemExit(f"{path}, line {n}: not valid JSON ({exc})") from exc
+        return out
+
+
+def import_otlp_file(path: str, client, *, agent: str | None = None, environment: str | None = None,
+                     version: str | None = None) -> dict:
+    """Send each OTLP request in the file to /v1/traces. `client` is an httpx.Client already pointed at the Auditor."""
+    params = {k: v for k, v in (("agent", agent), ("environment", environment), ("version", version)) if v}
+    total = {"requests": 0, "spans": 0, "runs_created": 0, "runs_updated": 0}
+    agents: set[str] = set()
+    for payload in read_otlp_file(path):
+        r = client.post("/v1/traces", json=payload, params=params)
+        if r.status_code != 200:
+            detail = r.text[:300]
+            raise SystemExit(f"The Auditor refused the traces ({r.status_code}): {detail}")
+        done = r.json().get("imported", {})
+        total["requests"] += 1
+        for k in ("spans", "runs_created", "runs_updated"):
+            total[k] += int(done.get(k, 0))
+        agents.update(done.get("agents", []))
+    return dict(total, agents=sorted(agents))
+
+
+def cmd_import_otlp(args: argparse.Namespace) -> int:
+    import httpx
+
+    headers = {"X-API-Key": args.api_key} if args.api_key else {}
+    with httpx.Client(base_url=args.url.rstrip("/"), headers=headers, timeout=60) as client:
+        try:
+            done = import_otlp_file(args.file, client, agent=args.agent, environment=args.environment, version=args.version)
+        except httpx.HTTPError as exc:
+            print(f"Could not reach the Auditor at {args.url}: {exc}")
+            return 1
+    print(f"Imported {done['spans']} spans from {done['requests']} request(s): {done['runs_created']} new runs, "
+          f"{done['runs_updated']} updated, agents: {', '.join(done['agents']) or 'none'}.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="agent-auditor", description="Reliability layer for AI agents.")
     parser.add_argument("--version", action="version", version=f"agent-auditor {__version__}")
@@ -112,6 +166,15 @@ def main(argv: list[str] | None = None) -> int:
     serve.add_argument("--db", help="database URL (default: a local SQLite file, agent_auditor.db)")
     serve.add_argument("--api-key", help="require this key in the X-API-Key header")
     serve.set_defaults(func=cmd_serve)
+
+    imp = sub.add_parser("import-otlp", help="send OpenTelemetry traces saved as JSON to a running Auditor")
+    imp.add_argument("file", help="OTLP/JSON file: one request, or one request per line")
+    imp.add_argument("--url", default=os.environ.get("AUDITOR_URL", "http://127.0.0.1:8000"))
+    imp.add_argument("--api-key", default=os.environ.get("AUDITOR_API_KEY", ""))
+    imp.add_argument("--agent", help="agent name (default: the service.name in the traces)")
+    imp.add_argument("--environment", choices=["production", "canary", "test"], help="default: from deployment.environment, else production")
+    imp.add_argument("--version", help="version label (default: service.version in the traces)")
+    imp.set_defaults(func=cmd_import_otlp)
 
     args = parser.parse_args(argv)
     if not getattr(args, "func", None):

@@ -38,9 +38,10 @@ Repository = "https://github.com/ArathiS1/agent-auditor"
 Issues = "https://github.com/ArathiS1/agent-auditor/issues"
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.5"]
+dev = ["pytest>=8", "ruff>=0.5", "opentelemetry-proto>=1.20", "opentelemetry-sdk>=1.20", "opentelemetry-exporter-otlp-proto-http>=1.20"]
 postgres = ["psycopg[binary]>=3.1"]
 langgraph = ["langgraph>=0.2", "langchain-core>=0.3"]
+otel = ["opentelemetry-proto>=1.20"]
 
 [project.scripts]
 agent-auditor = "agent_auditor.cli:main"

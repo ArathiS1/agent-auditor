@@ -7,7 +7,7 @@
   <img alt="status" src="https://img.shields.io/badge/status-alpha-orange">
   <img alt="python" src="https://img.shields.io/badge/python-3.11%2B-blue">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-green">
-  <img alt="tests" src="https://img.shields.io/badge/tests-455%20passing-brightgreen">
+  <img alt="tests" src="https://img.shields.io/badge/tests-479%20passing-brightgreen">
   <img alt="core runs offline" src="https://img.shields.io/badge/core-runs%20offline-lightgrey">
 </p>
 
@@ -108,6 +108,19 @@ def answer(question): ...
 
 Plain Python and LangGraph/LangChain are supported. See `examples/quickstart_plain.py` and `examples/langgraph_demo.py`.
 
+**Already using OpenTelemetry?** Point your exporter at the Auditor and keep your code as it is. It accepts the standard
+OTLP/HTTP endpoint, reads OpenInference, OTel GenAI, OpenLLMetry and Langfuse span attributes, and turns each trace into a run:
+
+```bash
+pip install "agent-auditor[otel]"
+agent-auditor serve --api-key demo-key
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:8000
+export OTEL_EXPORTER_OTLP_HEADERS="x-api-key=demo-key"
+```
+
+`service.name` becomes the agent, `service.version` the version and `deployment.environment` the environment. Saved traces
+import with `agent-auditor import-otlp traces.json`. See [docs/importing-traces.md](docs/importing-traces.md).
+
 ## The dashboard
 
 Open `/dashboard`. Fifteen pages, grouped by what you are trying to do:
@@ -195,7 +208,7 @@ What the loop looks like on a real incident (numbers are illustrative):
 
 ## Roadmap
 
-Planned, in rough order. Only the last item is done.
+Planned, in rough order. The last three items are done.
 
 - [ ] One-click "apply and verify" for fix candidates (register, replay and canary in one step)
 - [ ] Real user authentication, so approvers are verified and not typed names
@@ -203,6 +216,8 @@ Planned, in rough order. Only the last item is done.
 - [ ] Fact-checking scorers that compare answers with source documents, not just symptoms
 - [ ] A green PostgreSQL CI job, then promote PostgreSQL to supported
 - [x] Published package on PyPI (`pip install agent-auditor`)
+- [x] Checks for wrong and empty answers without an answer key (`gives_an_answer`, optional `answer_judge`)
+- [x] Import traces from any OpenTelemetry exporter (OTLP, JSON or protobuf)
 
 ## FAQ
 
@@ -225,6 +240,7 @@ Many failures, such as slow runs and rate limits, come from the model or provide
 | [docs/reference.md](docs/reference.md) | Every phase in detail: evals, drift, failure-to-test, root causes, canary, releases, attribution |
 | [docs/architecture.md](docs/architecture.md) | How the pieces fit |
 | [docs/deployment.md](docs/deployment.md) | Docker, PostgreSQL, secrets |
+| [docs/importing-traces.md](docs/importing-traces.md) | Send OpenTelemetry traces to the Auditor: how spans map to runs, and the limits |
 | [docs/answer-correctness.md](docs/answer-correctness.md) | Catching wrong or empty answers when you have no answer key, and what that cannot catch |
 | [docs/publishing.md](docs/publishing.md) | How a release reaches PyPI |
 | [docs/case-study.md](docs/case-study.md) | A worked example: Agent Auditor watching its own chat agent, including what did not work |
@@ -235,6 +251,8 @@ Many failures, such as slow runs and rate limits, come from the model or provide
 - Without an answer key, the built-in checks catch errors, slowness and non-answers ("I am not sure"), not confident wrong
   answers. For those you give the runs expected answers, or turn on the optional model judge, which sends each question and
   answer to a model you choose and can itself be wrong. See [docs/answer-correctness.md](docs/answer-correctness.md).
+- The OpenTelemetry import maps spans by convention (OpenInference, OTel GenAI, OpenLLMetry, Langfuse) and has been tested
+  with the Python SDK and hand-written traces only. gRPC export is not supported. See [docs/importing-traces.md](docs/importing-traces.md).
 - Approver names are self-asserted behind one shared API key. Promotion marks a version active; it deploys nothing.
 - Replay needs an agent that can be called again with the stored inputs. Agents that depend on live sessions or
   external state cannot be replayed faithfully.

@@ -403,6 +403,15 @@ may only promote a version when the gate passes and enough people approve. Every
 in the audit trail. Diagram and component notes: [docs/architecture.md](architecture.md). To validate on your
 own agent, follow [docs/case-study.md](case-study.md).
 
+## OpenTelemetry import
+
+`POST /v1/traces` is the standard OTLP/HTTP trace endpoint (JSON, or protobuf with `pip install "agent-auditor[otel]"`), so
+an OpenTelemetry exporter can send traces to the Auditor with `OTEL_EXPORTER_OTLP_ENDPOINT` and no code change. Each trace
+becomes a run, keyed by its trace id (resending is safe); `service.name`, `service.version` and `deployment.environment`
+become the agent, version and environment. Spans written with OpenInference, OTel GenAI, OpenLLMetry or Langfuse attributes
+give steps with their question, answer, model and tokens. `agent-auditor import-otlp FILE` loads saved traces. How spans map,
+traces that arrive in pieces, and the limits are in [importing-traces.md](importing-traces.md).
+
 ## SDK in 20 lines
 
 ```python
@@ -420,6 +429,8 @@ def answer(question): ...
 See `../examples/quickstart_plain.py` and `../examples/langgraph_demo.py`.
 
 ## Known limitations
+- The OpenTelemetry import maps spans by attribute convention and has been tested with the OpenTelemetry Python SDK and
+  hand-written traces, not yet with a Collector or other languages' exporters. gRPC export is not supported.
 - The AI helper and suggested fixes are only as good as the figures on the page; they can be wrong, so decisions stay with a person. Run data is sent to the Claude API when the helper is on.
 - Approver names are self-asserted (one shared API key), and promotion only flips the active version; it deploys nothing.
 - The dashboard has been checked in Chromium against fixtures, not yet against a long-running production server.
