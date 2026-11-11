@@ -40,6 +40,25 @@ def test_real_answers_pass_even_when_wrong(text):
     assert score("gives_an_answer", run(text)).passed
 
 
+@pytest.mark.parametrize("text", [
+    "No estoy seguro.", "No estoy segura de eso.", "No lo sé.", "Lo siento, pero no puedo ayudarte con eso.",
+    "No tengo suficiente información.", "Como IA, no tengo opinión.",
+    "Je ne suis pas sûr.", "Je ne sais pas.", "Désolé, mais je ne peux pas vous aider.",
+    "Je n’ai pas assez d’informations.", "Aucune idée !", "En tant qu'IA, je n'ai pas d'avis.",
+])
+def test_spanish_and_french_non_answers_fail(text):
+    r = score("gives_an_answer", run(text))
+    assert r is not None and not r.passed and "non-answer" in r.reason
+
+
+@pytest.mark.parametrize("text", [
+    "La capital de Australia es Canberra.", "No, la capital es Canberra, no Sídney.", "Sí, se puede.",
+    "La capitale de l'Australie est Canberra.", "Non, c'est Canberra, pas Sydney.", "Je sais : c'est Canberra.",
+])
+def test_spanish_and_french_real_answers_pass(text):
+    assert score("gives_an_answer", run(text)).passed
+
+
 def test_long_answers_with_a_hedge_still_count_as_answers():
     text = ("I don't know the exact figure, but based on the three reports I found the best estimate is about 391 units "
             "for the quarter, with a margin of roughly ten units either way depending on how returns are counted.")
