@@ -326,8 +326,7 @@ def test_import_otlp_file_reads_gzipped_json(client, tmp_path):
     lines = tmp_path / "many.jsonl.gz"
     with gzip.open(lines, "wt", encoding="utf-8") as f:
         for t in "ab":
-            f.write(json.dumps(request(openinference_trace(trace=t * 32))) + "
-")
+            f.write(json.dumps(request(openinference_trace(trace=t * 32))) + "\n")
     done = cli.import_otlp_file(str(lines), client, agent="from-gz")
     assert done["requests"] == 2 and done["runs_created"] == 2
 
