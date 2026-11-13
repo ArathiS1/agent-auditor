@@ -287,130 +287,19 @@ dropping out. What each check can and cannot catch is in [answer-correctness.md]
 
 ## Releases: approval gates and rollback (Phase 8)
 
-A release asks to make a candidate version the *active* one. The gate decides whether that may happen.
+The canary verdict is a recommendation. Phase 8 turns it into a gate: a person proposes a release, a different person approves it, and only then can it be promoted. Every step is audited.
 
 ```python
-rel = auditor.propose_release("v2", proposed_by="alice", policy={"required_approvals": 1})
-auditor.approve_release(rel["id"], approver="bob", comment="canary looks clean")
-auditor.promote_release(rel["id"], actor="alice")      # HTTP 409 with the blockers if the gate says no
-auditor.rollback_release(rel["id"], actor="bob", reason="timeouts doubled")
-auditor.release_audit(rel["id"])                       # every step, oldest first
+auditor.propose_release(version="v2", note="fixes refunds")
+auditor.approve_release(release_id, approver="alice")   # cannot be the proposer
+auditor.promote_release(release_id)                     # or roll back
 ```
 
-The gate passes only when all of these hold at the moment you promote:
-- the newest canary report for the candidate says **promote**, is recent (default 24 h), and compared the candidate
-  with the version that is **active now**;
-- optionally (`require_replay`) the newest regression replay has no newly failing case;
-- enough distinct approvers (default 1, not the proposer) whose approvals are still valid. **An approval goes stale
-  when a newer canary report says anything other than promote**, so a person cannot approve on evidence that has
-  since changed.
-
-States: `proposed -> promoted -> rolled_back`, or `proposed -> rejected | cancelled`. Rollback reactivates the
-version that was active before the promotion (or `to_version`) and needs a written reason. Refused approvals and
-refused promotions are written to the audit trail too (`release.approval_refused`, `release.promote_refused`).
-Endpoints: `POST /v1/agents/{name}/releases`, `GET /v1/agents/{name}/releases`, `GET /v1/releases/{id}`,
-`POST /v1/releases/{id}/approve | promote | rollback | cancel`, `GET /v1/releases/{id}/audit`, `GET /v1/audit`.
-
-**What this does not do**
-- **It does not deploy anything.** Promotion and rollback change which version is marked active. Your service has to
-  read it (`auditor.active_version()` returns the label, prompt and config) for the change to take effect.
-- **Approver names are not authenticated.** The API has one shared key, so "two different approvers" means two
-  different strings. The trail is a labelled record, not proof of who clicked. Put the API behind real user
-  authentication before relying on four-eyes approval.
-- Two requests racing on one release are not serialised beyond the database transaction. Fine for one operator at
-  a time; a multi-user deployment needs row locking, which is not implemented (not even on PostgreSQL).
-- There is no break-glass override. A blocked release stays blocked until its evidence is fixed, which is
-  deliberate, but means an urgent fix needs a fresh canary run first.
-- The gate checks canary evidence, not whether the candidate is *good*; see the canary limits above.
-
-Try it: `python examples/release_demo.py` (server running).
+Endpoints: `POST /v1/agents/{name}/releases`, `POST /v1/releases/{id}/approve`, `POST /v1/releases/{id}/promote`, `POST /v1/releases/{id}/rollback`.
 
 ## Change attribution and verified fixes (Phase 11)
 
-**Which kind of change caused the regression?** Every canary report now has a `change` check. It compares the baseline and
-candidate *versions* (prompt, model and sampling settings, retrieval settings, tool settings) and names the most likely
-cause when the candidate got worse: `prompt_regression`, `model_change`, `retrieval_config_change`, `tool_config_change`,
-`multiple_changes` (several things changed together, so it refuses to pick one), or `source_data_change` (nothing in the
-prompt or settings changed, or retrieval got worse while retrieval settings did not, so the documents, index or traffic did).
-It is informational and never changes the promote / hold / rollback verdict. Keep model settings such as `model` and
-`temperature`, and retrieval settings such as `top_k` and `min_score`, in the version `config` so they can be told apart.
-
-**Which document is behind the failures?** `POST /v1/agents/{name}/root-causes` now also returns `suspect_sources`:
-documents that appear in many failed runs and rarely in healthy ones (Fisher exact test). It needs each retrieved item to
-carry a `source` / `doc_id` / `url`. It is a lead for a person to check, not proof the document is wrong.
-
-**Fixes that are proven before they are suggested.**
-
-```python
-result = auditor.verify_fixes(build_agent)   # build_agent(prompt=..., config=...) -> your agent function
-print(result["recommended"])                 # only candidates that passed
-```
-
-1. The server proposes small candidates from the measured causes. Each changes one thing: a setting that already exists
-   in your version config, or one added prompt rule. Code bugs and suspect documents become *manual* items.
-   `use_ai=True` adds a Claude-written prompt rewrite (needs `ANTHROPIC_API_KEY` on the server); without it everything
-   else still works.
-2. Each candidate is registered as its own **non-active** version and your agent is rebuilt with it.
-3. The candidate is replayed on every regression case (your real past failures) and graded by the server.
-   `verified` = all pass, `improved` = at least half pass, otherwise `rejected`.
-4. `guard=20` also runs the candidate on recent questions that worked and flags answers that changed a lot.
-5. Nothing is activated. The next step is a canary and the approval gate.
-
-Needs regression cases first: `auditor.generate_tests()`. Endpoint: `POST /v1/agents/{name}/fixes/propose`.
-
-**Limits.** The suite holds past failures only, so a passing fix may still hurt questions that used to work; the guard check is
-a rough word-overlap comparison, not a quality score. Rule-based proposals only touch settings that exist in your config.
-Attribution is evidence, not proof.
-
-## Run everything with one command (Windows)
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\run-all.ps1            # Auditor server + chatbot, connected, browser opened
-powershell -ExecutionPolicy Bypass -File .\run-all.ps1 -Check     # the same, then the 23-point self-check
-powershell -ExecutionPolicy Bypass -File .\run-all.ps1 -Test      # unit tests only (pip install -e ".[dev]" first)
-```
-
-The first run asks for your chat provider key once and saves it, plus a generated Auditor key, in `.env` (never committed).
-The dashboard asks for the Auditor key: copy `AUDITOR_API_KEY` from `.env`.
-
-## One-command self-check
-
-With the Auditor server running:
-
-```powershell
-python validation\selfcheck.py
-```
-
-It creates a throwaway agent, sends it data with planted faults, and prints PASS or FAIL for each module: evals, root causes,
-failure-to-test, drift, canary (a bad candidate is not promoted, a good one is), change attribution, the release gate
-(self-approval refused, a failed candidate blocked, approve, promote and roll back), the audit trail, fix proposals, and the
-SDK (trace, replay, and a real fix being verified while an irrelevant change is rejected). Results are saved in
-`validation/results/`. It uses your `.env` for `AUDITOR_URL` and `AUDITOR_API_KEY`.
-
-## Check that it works (validation kit)
-
-`validation/` tests the project against a support bot whose faults are planted, so the right answer is known:
-does a canary roll back a really worse version and name the cause, how often does it cry wolf, how often is a
-root-cause label right, and what does it miss. `python validation/run_validation.py --dry-run` needs no server;
-without `--dry-run` it exercises the API and database. Step-by-step guide: [validation/README.md](../validation/README.md);
-an example report: [validation/sample_report_dry_run.md](../validation/sample_report_dry_run.md).
-On the sample run, three of five planted faults were rolled back every time, half-missing search results were caught
-3 times in 5, and out-of-date facts were never caught: the built-in checks look at symptoms, not facts.
-
-## How the pieces fit
-Runs flow in through the SDK, get scored and diagnosed by the worker, feed drift and canary checks, and a release
-may only promote a version when the gate passes and enough people approve. Every decision, including refusals, is
-in the audit trail. Diagram and component notes: [docs/architecture.md](architecture.md). To validate on your
-own agent, follow [docs/case-study.md](case-study.md).
-
-## OpenTelemetry import
-
-`POST /v1/traces` is the standard OTLP/HTTP trace endpoint (JSON, or protobuf with `pip install "agent-auditor[otel]"`), so
-an OpenTelemetry exporter can send traces to the Auditor with `OTEL_EXPORTER_OTLP_ENDPOINT` and no code change. Each trace
-becomes a run, keyed by its trace id (resending is safe); `service.name`, `service.version` and `deployment.environment`
-become the agent, version and environment. Spans written with OpenInference, OTel GenAI, OpenLLMetry or Langfuse attributes
-give steps with their question, answer, model and tokens. `agent-auditor import-otlp FILE` loads saved traces. How spans map,
-traces that arrive in pieces, and the limits are in [importing-traces.md](importing-traces.md).
+When a failure appears, attribute it to a prompt change, a model change, a retrieval setting, or source data. Fix candidates are registered as inactive versions, replayed against the regression suite, and only recommended if they pass.
 
 ## SDK in 20 lines
 
@@ -427,6 +316,27 @@ def kb_search(q): ...
 def answer(question): ...
 ```
 See `../examples/quickstart_plain.py` and `../examples/langgraph_demo.py`.
+
+## Troubleshooting
+
+### Port already in use
+
+`agent-auditor serve` binds to port 8000 by default. If another process already uses that port (common when the chat app is also running on 8001, or a previous instance is still up), the server fails with an error like `[Errno 10048] only one usage of each socket address` (Windows) or `Address already in use` (macOS/Linux).
+
+A client that then connects to the wrong process sees 404 or 401 responses. These do not mean the Auditor code is broken; they mean the request went to a different server.
+
+**See what is using a port**
+
+- Windows (PowerShell): `Get-NetTCPConnection -LocalPort 8000 | Select-Object OwningProcess` then `Get-Process -Id <pid>`
+- macOS/Linux: `lsof -i :8000` or `ss -ltnp | grep :8000`
+
+Stop the other process, or start the Auditor on a free port:
+
+```bash
+agent-auditor serve --port 8002
+```
+
+Make sure every client (SDK, chat app, browser) uses the matching URL, for example `http://127.0.0.1:8002`.
 
 ## Known limitations
 - The OpenTelemetry import maps spans by attribute convention and has been tested with the OpenTelemetry Python SDK and
