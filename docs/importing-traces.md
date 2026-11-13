@@ -4,6 +4,11 @@ If your agent already emits OpenTelemetry traces, you do not need to change its 
 at the Auditor. Each trace becomes one run, its model, tool and retrieval spans become steps, and everything after that (evals,
 root causes, regression tests, canary, releases) works on it.
 
+
+## File import
+
+`agent-auditor import-otlp FILE` accepts plain JSON, JSON lines, and gzip-compressed versions of both (files ending in `.gz`).
+
 ## Quick start
 
 ```bash
@@ -83,8 +88,13 @@ Imported runs do not pick up expected answers from span attributes, so `expectat
 - **Mapping is by convention.** Instrumentation that uses other attribute names imports with timing and status but no
   question or answer text. If yours does, open an issue with a sample span and the mapping is a few lines.
 - **Metrics and logs are ignored.** Only traces are received.
-- **Not tested against every exporter.** It was tested with the OpenTelemetry Python SDK sending protobuf over HTTP, and
-  with hand-written JSON in the OpenInference, GenAI, OpenLLMetry and Langfuse styles. Not yet with a Collector, the
-  JavaScript or Java exporters, or a Langfuse deployment.
+- **Not tested against every exporter.** It was tested with the OpenTelemetry Python SDK sending protobuf over HTTP; with the
+  real OpenInference instrumentors for OpenAI, smolagents and LangChain/LangGraph and the OpenLLMetry instrumentor for OpenAI
+  (all run against a scripted model server, so the spans are real and the model's answers are not); and with hand-written JSON
+  in the Langfuse and GenAI styles. Not yet with a Collector, the JavaScript or Java exporters, other instrumentors, or a
+  Langfuse deployment.
+- **Agent frameworks record their call arguments.** When a root span's input is a JSON object, the question is taken from a
+  field named `task`, `question`, `query`, `input`, `prompt`, `message` or `text`, and a graph state like `{"messages": [...]}`
+  gives its last user and last assistant messages. An object with none of those stays as it is.
 - **No sampling or retention controls.** Everything sent is stored. Limit what you send at the exporter or the Collector.
 - Requests are capped at 32 MB and 50,000 spans.

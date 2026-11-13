@@ -11,3 +11,5 @@ validation/results/
 build/
 dist/
 *.egg-info/
+
+studies/results/DRYRUN-*

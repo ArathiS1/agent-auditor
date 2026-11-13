@@ -196,7 +196,21 @@ _NON_ANSWER = re.compile(
     r"(?:help|answer|assist|provide|say|tell|respond|do that|find)"
     r"|\bunable to (?:help|answer|assist|provide)\b"
     r"|\bi (?:do not|don't) have (?:enough |any )?(?:information|access|an answer)\b"
-    r"|\bas an ai\b|\bas a language model\b|\bi(?:'m| am) sorry,? but\b",
+    r"|\bas an ai\b|\bas a language model\b|\bi(?:'m| am) sorry,? but\b"
+    # Spanish. Only whole first-person phrases, so "no sé" alone (which can start a real answer) doesn't count.
+    r"|\bno estoy (?:muy |del todo )?segur[oa]\b"
+    r"|\bno (?:lo )?s[eé] (?:la respuesta|qu[eé] (?:decir|responder))"
+    r"|\bno lo s[eé]\b"
+    r"|\bno (?:puedo|soy capaz de) (?:ayudar|responder|contestar|asistir)"
+    r"|\bno tengo (?:suficiente |ninguna )?informaci[oó]n\b"
+    r"|\bcomo (?:una )?ia\b|\bcomo (?:un )?modelo de lenguaje\b|\blo siento,? pero\b"
+    # French.
+    r"|\bje ne suis pas (?:tout à fait |vraiment )?s[uû]re?\b"
+    r"|\bje ne (?:le )?sais pas\b|\baucune idée\b"
+    r"|\bje ne (?:peux|suis pas en mesure d') ?(?:pas )?(?:vous |t')?(?:aider|répondre|assister)"
+    r"|\bje n'ai pas (?:assez d'|suffisamment d'|d')informations?\b"
+    r"|\ben tant qu'(?:ia|intelligence artificielle|ai)\b|\ben tant que modèle de langage\b"
+    r"|\bd[ée]sol[ée]e?,? mais\b",
     re.IGNORECASE,
 )
 

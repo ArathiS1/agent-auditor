@@ -96,10 +96,18 @@ def cmd_serve(args: argparse.Namespace) -> int:
 
 
 def read_otlp_file(path: str) -> list[dict]:
-    """OTLP/JSON requests from a file: one JSON object, or one object per line (what the OpenTelemetry Collector's file exporter writes)."""
+    """OTLP/JSON requests from a file: one JSON object, or one object per line (what the OpenTelemetry Collector's file exporter writes).
+
+    Files ending in .gz are decompressed with gzip first.
+    """
+    import gzip
     import json
 
-    text = open(path, encoding="utf-8-sig").read()
+    if path.endswith(".gz"):
+        with gzip.open(path, "rt", encoding="utf-8-sig") as f:
+            text = f.read()
+    else:
+        text = open(path, encoding="utf-8-sig").read()
     try:
         data = json.loads(text)
         return data if isinstance(data, list) else [data]

@@ -7,7 +7,7 @@
   <img alt="status" src="https://img.shields.io/badge/status-alpha-orange">
   <img alt="python" src="https://img.shields.io/badge/python-3.11%2B-blue">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-green">
-  <img alt="tests" src="https://img.shields.io/badge/tests-479%20passing-brightgreen">
+  <img alt="tests" src="https://img.shields.io/badge/tests-505%20passing-brightgreen">
   <img alt="core runs offline" src="https://img.shields.io/badge/core-runs%20offline-lightgrey">
 </p>
 
@@ -241,6 +241,7 @@ Many failures, such as slow runs and rate limits, come from the model or provide
 | [docs/architecture.md](docs/architecture.md) | How the pieces fit |
 | [docs/deployment.md](docs/deployment.md) | Docker, PostgreSQL, secrets |
 | [docs/importing-traces.md](docs/importing-traces.md) | Send OpenTelemetry traces to the Auditor: how spans map to runs, and the limits |
+| [docs/case-studies.md](docs/case-studies.md) | Run the canary on a stock smolagents or LangGraph agent, two models, with your own key |
 | [docs/answer-correctness.md](docs/answer-correctness.md) | Catching wrong or empty answers when you have no answer key, and what that cannot catch |
 | [docs/publishing.md](docs/publishing.md) | How a release reaches PyPI |
 | [docs/case-study.md](docs/case-study.md) | A worked example: Agent Auditor watching its own chat agent, including what did not work |
@@ -252,7 +253,8 @@ Many failures, such as slow runs and rate limits, come from the model or provide
   answers. For those you give the runs expected answers, or turn on the optional model judge, which sends each question and
   answer to a model you choose and can itself be wrong. See [docs/answer-correctness.md](docs/answer-correctness.md).
 - The OpenTelemetry import maps spans by convention (OpenInference, OTel GenAI, OpenLLMetry, Langfuse) and has been tested
-  with the Python SDK and hand-written traces only. gRPC export is not supported. See [docs/importing-traces.md](docs/importing-traces.md).
+  with the Python SDK and the OpenInference and OpenLLMetry instrumentors for OpenAI, smolagents and LangChain, against a scripted
+  model. gRPC export is not supported. See [docs/importing-traces.md](docs/importing-traces.md).
 - Approver names are self-asserted behind one shared API key. Promotion marks a version active; it deploys nothing.
 - Replay needs an agent that can be called again with the stored inputs. Agents that depend in live sessions or
   external state cannot be replayed faithfully.

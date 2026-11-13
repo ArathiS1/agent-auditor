@@ -312,6 +312,24 @@ def test_import_otlp_file_reads_one_request_or_json_lines(client, tmp_path):
     assert {r["environment"] for r in runs(client, "from-file")} == {"canary"}
 
 
+
+
+def test_import_otlp_file_reads_gzipped_json(client, tmp_path):
+    """gzip-compressed OTLP/JSON files are accepted."""
+    payload = request(openinference_trace())
+    gz_path = tmp_path / "traces.json.gz"
+    with gzip.open(gz_path, "wt", encoding="utf-8") as f:
+        json.dump(payload, f)
+    done = cli.import_otlp_file(str(gz_path), client)
+    assert done["requests"] == 1 and done["runs_created"] == 1
+    # also jsonl.gz
+    lines = tmp_path / "many.jsonl.gz"
+    with gzip.open(lines, "wt", encoding="utf-8") as f:
+        for t in "ab":
+            f.write(json.dumps(request(openinference_trace(trace=t * 32))) + "\n")
+    done = cli.import_otlp_file(str(lines), client, agent="from-gz")
+    assert done["requests"] == 2 and done["runs_created"] == 2
+
 def test_import_otlp_file_explains_what_went_wrong(client, tmp_path):
     bad = tmp_path / "bad.json"
     bad.write_text('{"resourceSpans": 5}', encoding="utf-8")
